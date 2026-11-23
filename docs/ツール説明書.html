@@ -1,0 +1,4627 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>議事録作成ツール 説明書</title><style>
+:root{--bg:#fff;--fg:#1f2328;--muted:#59636e;--line:#d1d9e0;--panel:#f6f8fa;--accent:#0969da;
+--s-未着手:#fde9d9;--s-検討中:#fff2cc;--s-決定:#ddebf7;--s-済:#e2efda;--s-保留:#ededed}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9198a1;--line:#3d444d;--panel:#151b23;--accent:#4493f8;
+--s-未着手:#5a2e22;--s-検討中:#5a4a1a;--s-決定:#1e3a5a;--s-済:#22472a;--s-保留:#3a3a3a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.7 "Meiryo UI","Yu Gothic UI",system-ui,sans-serif}
+nav{position:fixed;top:0;left:0;bottom:0;width:250px;overflow:auto;padding:20px 16px;border-right:1px solid var(--line);background:var(--panel)}
+nav h1{font-size:16px;margin:0 0 4px}nav .gen{color:var(--muted);font-size:12px;margin-bottom:16px}
+nav a{display:block;color:var(--fg);text-decoration:none;padding:4px 8px;border-radius:6px}nav a:hover{background:var(--line)}
+main{margin-left:250px;padding:24px 40px 80px;max-width:1150px}
+section{margin-bottom:48px}h2{border-bottom:2px solid var(--line);padding-bottom:6px;margin-top:8px}
+table{border-collapse:collapse;margin:12px 0;font-size:14px}th,td{border:1px solid var(--line);padding:5px 9px;vertical-align:top;text-align:left}
+th{background:var(--panel)}code{background:var(--panel);padding:1px 5px;border-radius:4px;font-size:13px}
+pre{background:var(--panel);padding:12px;border-radius:6px;overflow:auto}pre code{padding:0}
+a{color:var(--accent)}details.doc{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--bg)}
+details.doc>summary{cursor:pointer;padding:8px 12px;font-weight:600}details.doc[open]>summary{border-bottom:1px solid var(--line);background:var(--panel)}
+.doc-body{padding:4px 16px 12px}.scroll{overflow-x:auto}
+.cards{display:flex;gap:12px;flex-wrap:wrap}.card{border:1px solid var(--line);border-radius:8px;padding:10px 16px;min-width:120px;background:var(--panel)}
+.card b{display:block;font-size:22px}.st{padding:1px 8px;border-radius:10px;white-space:nowrap}
+.st-未着手{background:var(--s-未着手)}.st-検討中{background:var(--s-検討中)}.st-決定{background:var(--s-決定)}.st-済{background:var(--s-済)}.st-保留{background:var(--s-保留)}
+.legend{list-style:none;padding:0;display:flex;gap:16px;flex-wrap:wrap;font-size:13px}
+.filters button{margin:0 6px 6px 0;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);cursor:pointer}
+.filters button.on{border-color:var(--accent);color:var(--accent)}
+@media (max-width:800px){nav{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line)}main{margin-left:0;padding:16px}}
+</style></head>
+<body><nav><h1>議事録作成ツール 説明書</h1><div class="gen">2026/11/23 17:41 生成</div><a href="#overview">概要</a><a href="#design">設計書</a><a href="#detail">詳細設計書</a><a href="#verification">評価（テスト結果）</a><a href="#issue">Issue</a></nav><main><section id="overview"><h2>概要</h2><div class="cards"><div class="card">Issue（全体）<b>20</b></div><div class="card">Issue（未完了）<b>4</b></div><div class="card">テスト結果<b>4</b></div><div class="card">詳細設計書<b>0</b></div></div><p>このページは docs 配下の md・JSON から自動生成した、人が読むための説明書です。内容を直すときは元の md を直し、開発サイクルの最後に作り直します（手で編集しない）。</p></section><section id="design"><h2>設計書</h2><ul>
+<li>版数：Ver0.5（2026/11/23）</li>
+<li>対象：<code>20261122_Voice_Translate_2</code></li>
+<li>位置づけ：検証段階の構成をそのまま記録したもの。今後の決定（docs/issue/issue_md/ISSUE-017 など）で変わる。</li>
+</ul>
+<hr />
+<h2>1. ツールの目的</h2>
+<p>会議の録音から、<strong>人手で書いた議事録と同じ書式の Word 議事録を、事実に忠実に作る</strong>こと。</p>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>使う人</td>
+<td>議事録の記録者。<br />AI の出力を確認・修正して、最終成果物にする</td>
+</tr>
+<tr>
+<td>最優先</td>
+<td><strong>正しい事実としての議事録</strong>。発言にないことを書かない。拾える発言は漏らさない<br />（具体例・経緯を本文で省かない）</td>
+</tr>
+<tr>
+<td>後回し</td>
+<td>処理速度（漏れのない議事録ができてから検討。docs/issue/issue_md/ISSUE-018）</td>
+</tr>
+<tr>
+<td>守ること</td>
+<td><strong>会議の音声はクラウドサービスに送らない</strong>（文字起こし・話者分離はローカルで行う）</td>
+</tr>
+<tr>
+<td>出力</td>
+<td>人手版と同じ書式の Word（冒頭に会議情報の表、【決定事項】【TODO】【会議内容】）。<br />確認が必要な箇所は黄色の蛍光ペン</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>2. 動作環境</h2>
+<h3>2.1 検証した環境</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS</td>
+<td>Windows 11 Home（10.0.26200）</td>
+</tr>
+<tr>
+<td>CPU / GPU</td>
+<td>CPU 8スレッド、GPU なし</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>3.12.10</td>
+</tr>
+<tr>
+<td>ffmpeg</td>
+<td>不要（PyAV が音声をデコードする）</td>
+</tr>
+<tr>
+<td>Word</td>
+<td>PDF での見た目確認にのみ使用（任意）</td>
+</tr>
+<tr>
+<td>ディスク</td>
+<td>モデル約1.7GB ＋ venv 2つで約3GB</td>
+</tr>
+<tr>
+<td>ネットワーク</td>
+<td>初回のモデルのダウンロード（Hugging Face）と、議事録作成時の Claude との通信のみ</td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 Python 環境（venv を2つに分ける理由）</h3>
+<p>faster-whisper と pyannote は依存ライブラリ（numpy、huggingface_hub、torch）のバージョンが衝突するため、venv を分けている。</p>
+<table>
+<thead>
+<tr>
+<th>venv</th>
+<th>用途</th>
+<th>主なパッケージ</th>
+<th>一覧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.venv</code></td>
+<td>文字起こし、抜けの補完、自己点検、Word 出力、Issue 一覧、用語集</td>
+<td>faster-whisper 1.2.1、ctranslate2 4.9.1、av 19.0.2、numpy 2.5.5、python-docx 1.2.0、openpyxl 3.1.5、pypdfium2・pillow（PDF 確認用）</td>
+<td><code>requirements-whisper.txt</code></td>
+</tr>
+<tr>
+<td><code>.venv-diar</code></td>
+<td>話者分離</td>
+<td>pyannote.audio 3.3.2、torch 2.5.1+cpu、torchaudio 2.5.1+cpu、numpy 1.26.4、huggingface_hub 0.25.2、lightning 2.4.0、av 19.0.2</td>
+<td><code>requirements-diar.txt</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>バージョン固定が必要な理由（実際に起きた不具合）</strong></p>
+<ul>
+<li>pyannote.audio 3.3.2 は、torchaudio 2.9 以降で <code>AttributeError: torchaudio.AudioMetaData</code> になる → torch / torchaudio を 2.5.1 に固定。</li>
+<li>pyannote.audio 3.3.2 は <code>use_auth_token</code> 引数を使うため、huggingface_hub 1.0 以降では動かない → 0.25 系に固定。</li>
+<li>pyannote の依存（pyannote.core など）は新しいメジャー版と互換性がない → 5.0.0 などに固定。</li>
+<li>PyAV 19 では faster-whisper 内蔵の音声読み込みが失敗する → 音声は自前の <code>src/audio_io.py</code> で読み込み、配列で渡す。</li>
+</ul>
+<h3>2.3 モデル</h3>
+<table>
+<thead>
+<tr>
+<th>モデル</th>
+<th>用途</th>
+<th>取得元</th>
+<th>保存先（キャッシュ）</th>
+<th>認証</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>faster-whisper large-v3-turbo（int8）</td>
+<td>文字起こし</td>
+<td><code>mobiuslabsgmbh/faster-whisper-large-v3-turbo</code></td>
+<td><code>~/.cache/huggingface/hub/</code>（約1.6GB）</td>
+<td>不要</td>
+</tr>
+<tr>
+<td>pyannote/speaker-diarization-3.1</td>
+<td>話者分離のパイプライン定義</td>
+<td>Hugging Face</td>
+<td><code>~/.cache/torch/pyannote/</code></td>
+<td><strong>要</strong>（利用規約への同意＋トークン）</td>
+</tr>
+<tr>
+<td>pyannote/segmentation-3.0</td>
+<td>発話区間の検出</td>
+<td>同上</td>
+<td>同上（約6MB）</td>
+<td><strong>要</strong></td>
+</tr>
+<tr>
+<td>pyannote/wespeaker-voxceleb-resnet34-LM</td>
+<td>話者の声の特徴量</td>
+<td>同上</td>
+<td>同上（約26MB）</td>
+<td>不要</td>
+</tr>
+</tbody>
+</table>
+<h3>2.4 導入手順（新しい環境）</h3>
+<pre><code class="language-powershell"># 0. フォルダ一式をコピー（.venv / .venv-diar はコピーせず作り直す）
+cd 20261122_Voice_Translate_2
+
+# 1. 文字起こし用 venv
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install --upgrade pip
+.venv\Scripts\python -m pip install -r requirements-whisper.txt
+
+# 2. 話者分離用 venv（torch は CPU 版の配布元を指定する）
+py -3.12 -m venv .venv-diar
+.venv-diar\Scripts\python -m pip install --upgrade pip
+.venv-diar\Scripts\python -m pip install -r requirements-diar.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+# 3. Hugging Face の準備（初回のみ）
+#    (a) https://huggingface.co/pyannote/speaker-diarization-3.1 と
+#        https://huggingface.co/pyannote/segmentation-3.0 で「Agree」を押す
+#    (b) https://huggingface.co/settings/tokens で Read 権限のトークンを作る
+#    (c) トークンを保存（~/.cache/huggingface/token に保存される）
+.venv-diar\Scripts\python -c &quot;from huggingface_hub import login; login()&quot;
+</code></pre>
+<ul>
+<li>モデルは初回実行時に自動でダウンロードされる。Hugging Face に接続できない環境では、接続できる PC で <code>~/.cache/huggingface/hub/</code> と <code>~/.cache/torch/pyannote/</code> を作ってからコピーする。</li>
+<li>日本語を含むパスで動かすため、実行時は <code>PYTHONUTF8=1</code> を設定する（一括実行スクリプトは自動で設定する）。</li>
+<li>一括実行スクリプトは実行中のスリープを抑止するが、蓋を閉じた時の動作は電源設定に従う。長時間の処理中は蓋を閉じない。</li>
+</ul>
+<h3>2.5 ガードレール（音声をクラウドに送らない）</h3>
+<ul>
+<li><code>test_code/.claude/hooks/block-audio-upload.ps1</code>（Claude Code の PreToolUse フック）が、次の操作を拒否する。</li>
+<li>Bash / PowerShell：音声・動画ファイル（.m4a、.mp3、.wav、.mp4 など）と、通信のコマンド（curl、Invoke-WebRequest、scp、aws s3、azcopy、requests.post、git push、https:// など）が同じコマンドに含まれる場合</li>
+<li>WebFetch / WebSearch / MCP ツール：入力に音声・動画ファイル名が含まれる場合</li>
+<li>登録先：<code>test_code/.claude/settings.json</code>（test_code を開いた場合）と <code>20261122_Voice_Translate_2/.claude/settings.json</code>（プロジェクトを直接開いた場合）。Claude Code の再起動後に有効。</li>
+<li>限界：ソフトウェア上のガードレールで、OS レベルの遮断ではない。人が手で実行するコマンドは止められない。ツールのコードは音声を外部に送る処理を持たない。</li>
+<li>議事録作成（4章の④）では、<strong>文字起こしのテキスト</strong>を Anthropic（Claude）に送る。音声は送らない。</li>
+</ul>
+<hr />
+<h2>3. フォルダ構成</h2>
+<p>&lt;名前&gt; は音声ファイル名（拡張子なし。例：<code>20261120_CI</code>）。会議ごとにフォルダを分ける。</p>
+<pre><code>20261122_Voice_Translate_2/
+├─ INPUT/                          入力
+│   ├─ &lt;名前&gt;.m4a                    録音
+│   ├─ &lt;名前&gt;.会議情報.txt           会議情報ファイル（記録者が記入：会議名・種類・参加者・話者対応表）
+│   └─ *.docx                       人手版の議事録（検証用）
+├─ transcripts/&lt;名前&gt;/              ①〜③の出力（中間ファイル）
+│   └─ &lt;名前&gt;.txt / .json / .srt / .speakers.txt / .diarization.json / .meta.json / .timing.json
+├─ minutes/&lt;名前&gt;/                  ④〜⑥の出力（成果物）
+│   ├─ &lt;名前&gt;_議事録.md / .docx       議事録
+│   ├─ &lt;名前&gt;_議事録.check.md / .json 自己点検の結果
+│   ├─ &lt;名前&gt;_議事録_基本試行.*       参加者氏名だけで作った版（検証用）
+│   └─ &lt;名前&gt;_自動版.md               基本試行の元原稿（検証用）
+├─ src/                             ツールのコード
+│   ├─ paths.py            出力先のパス（会議ごとのフォルダ）
+│   ├─ meeting_info.py     会議情報ファイルのひな形作成・読み込み
+│   ├─ run_pipeline.py     ①〜③の一括実行・処理時間の記録・スリープ抑止
+│   ├─ audio_io.py         音声の読み込み（共通）
+│   ├─ transcribe.py       ① 文字起こし
+│   ├─ diarize.py          ② 話者分離
+│   ├─ merge_speakers.py   話者の割り当て（②③で共通）
+│   ├─ fill_gaps.py        ③ 抜けの補完
+│   ├─ speaker_samples.py  話者対応表を作るための発言例の表示
+│   ├─ check_coverage.py   ⑤ 自己点検
+│   ├─ make_docx.py        ⑥ Word 出力
+│   ├─ glossary_tool.py    用語集の読み出し・⑦ 追加候補の抽出
+│   └─ timing.py           ④〜⑦の作業時間の記録
+├─ docs/                            開発の記録（md は AI が読む、HTML は人が読む）
+│   ├─ ツール説明書.html             人が読む説明書（設計書・詳細設計書・テスト結果・Issue をまとめたもの。生成物）
+│   ├─ design/                       要件定義
+│   │   ├─ 議事録作成ツール設計書.md
+│   │   ├─ 開発サイクル記録.md
+│   │   ├─ 当社の議事録作成用の用語集.xlsx（用語・人名・候補。記録者が編集する）
+│   │   └─ design_detail/            コードごとの詳細設計書
+│   ├─ verification/                 評価
+│   │   ├─ 議事録検証計画.md、MinutesVerification.lean、&lt;名前&gt;_比較.md
+│   │   ├─ テスト結果一覧.xlsx       人が見る一覧（生成物）
+│   │   ├─ results/&lt;run_id&gt;.json     1回分の結果（正本）
+│   │   └─ reports/&lt;run_id&gt;.md       1回分の報告（生成物）
+│   └─ issue/                        Issue
+│       ├─ Issue一覧.xlsx            人が見る一覧（生成物）
+│       └─ issue_md/                 ISSUE-*.md（正本）、README.md、_template.md
+├─ .claude/
+│   ├─ settings.json                 音声送信禁止フック
+│   └─ skills/
+│       ├─ minutes/                  議事録作成（SKILL.md、references/writing-rules.md・format-spec.md、assets/template_*.docx）
+│       ├─ verification/             評価の記録・テスト結果一覧
+│       ├─ issue/                    Issue の起票・一覧
+│       ├─ design-detail/            詳細設計書
+│       ├─ tool-manual/              ツール説明書（HTML）
+│       ├─ dev-cycle/                開発サイクルの進行
+│       └─ skill-creator/            スキルを作るためのスキル
+├─ requirements-whisper.txt / requirements-diar.txt
+└─ .venv/ / .venv-diar/             Python 環境（環境ごとに作り直す）
+</code></pre>
+<hr />
+<h2>4. 処理の全体像</h2>
+<pre><code>INPUT/&lt;名前&gt;.m4a（録音）＋ INPUT/&lt;名前&gt;.会議情報.txt（記録者が記入：会議名・種類・参加者・話者対応表）
+   │ ① 文字起こし        transcribe.py    [.venv]       faster-whisper（ローカル）
+   │ ② 話者分離          diarize.py       [.venv-diar]  pyannote（ローカル）
+   │ ③ 抜けの補完        fill_gaps.py     [.venv]       faster-whisper（ローカル）
+   │   ※ ①〜③は run_pipeline.py で一括実行（処理時間を記録）
+   ▼
+transcripts/&lt;名前&gt;/&lt;名前&gt;.speakers.txt（話者記号付きの文字起こし）
+   │ ④ 議事録の作成      Claude（現状は Claude Code で対話的に実施）
+   │     入力：文字起こし＋参加者＋話者対応表（人が作る）＋用語集
+   ▼
+minutes/&lt;名前&gt;/&lt;名前&gt;_議事録.md
+   │ ⑤ 自己点検          check_coverage.py [.venv]      抜け・根拠のない語の候補を出し、④に戻って直す
+   │ ⑥ Word 出力         make_docx.py      [.venv]      python-docx
+   ▼
+minutes/&lt;名前&gt;/&lt;名前&gt;_議事録.docx → 記録者が確認・修正して最終成果物にする
+   │ ⑦ 用語集の追加候補   glossary_tool.py  [.venv]      候補を用語集の「候補」シートに追記し、記録者に通知
+   ▼
+記録者が候補を確認 → 「用語」「人名」シートに反映（次の会議から使われる）
+
+④〜⑦の手順は、議事録作成スキル `.claude/skills/minutes/` にまとめている。「議事録を作って」と頼むと、このスキルに沿って進む。
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>工程</th>
+<th>外部に送るデータ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①②③⑤⑥⑦</td>
+<td>なし（初回のみ、モデルを Hugging Face からダウンロードする。音声は送らない）</td>
+</tr>
+<tr>
+<td>④</td>
+<td>文字起こしのテキストを Anthropic（Claude）に送る。音声は送らない</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>5. 処理の詳細</h2>
+<h3>5.1 ①〜③ 一括実行 <code>src/run_pipeline.py</code></h3>
+<pre><code class="language-powershell">.venv\Scripts\python src\run_pipeline.py INPUT\&lt;名前&gt;.m4a --speakers &lt;参加人数&gt;
+</code></pre>
+<ul>
+<li>①②③を順に実行し、工程ごとの開始・終了時刻と処理時間を <code>transcripts/&lt;名前&gt;/&lt;名前&gt;.timing.json</code> に記録する。</li>
+<li>実行中は Windows のアイドル時スリープを抑止する。</li>
+<li>工程を個別に実行する場合は 5.2〜5.4 のコマンドを使う。</li>
+</ul>
+<h3>5.2 ① 文字起こし <code>src/transcribe.py</code></h3>
+<pre><code class="language-powershell">$env:PYTHONUTF8=1; .venv\Scripts\python src\transcribe.py INPUT\&lt;名前&gt;.m4a
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>設定</th>
+<th>値</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>model</td>
+<td>large-v3-turbo</td>
+<td>CPU でも実用的な速度で、日本語の精度が高い</td>
+</tr>
+<tr>
+<td>device / compute_type</td>
+<td>cpu / int8</td>
+<td>GPU なし。int8 で速度とメモリを節約</td>
+</tr>
+<tr>
+<td>language</td>
+<td>ja</td>
+<td>言語の自動判定を省く</td>
+</tr>
+<tr>
+<td>beam_size</td>
+<td>5</td>
+<td>標準値</td>
+</tr>
+<tr>
+<td>vad_filter</td>
+<td>True</td>
+<td>無音区間を飛ばして速くする</td>
+</tr>
+<tr>
+<td>condition_on_previous_text</td>
+<td>False</td>
+<td>長い音声で同じ文を繰り返す誤動作（幻覚）を防ぐ</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>音声は <code>src/audio_io.py</code> で 16kHz モノラル float32 に変換してから渡す。</li>
+<li>出力：<code>.txt</code>（[時刻] テキスト）、<code>.json</code>（セグメント）、<code>.srt</code>、<code>.meta.json</code>（設定・処理時間）。</li>
+</ul>
+<h3>5.3 ② 話者分離 <code>src/diarize.py</code></h3>
+<pre><code class="language-powershell">$env:PYTHONUTF8=1; .venv-diar\Scripts\python src\diarize.py INPUT\&lt;名前&gt;.m4a --speakers &lt;参加人数&gt;
+</code></pre>
+<ul>
+<li>pyannote 3.1（CPU）で話者区間を求め、<code>.diarization.json</code> に保存する。</li>
+<li><code>--speakers</code> に参加人数を指定する（指定しないと自動推定）。</li>
+<li>Whisper の各セグメントに、時間の重なりが最も大きい話者を割り当てる（<code>src/merge_speakers.py</code>）。同じ話者が続く行はまとめて <code>.speakers.txt</code> に出力する。</li>
+<li>出力の話者は <code>SPEAKER_00</code> などの記号。<strong>氏名との対応表は人が作る</strong>（ヒアリング形式では AI の推定が誤った。docs/issue/issue_md/ISSUE-001）。</li>
+<li>既知の限界：声の近い2人を1人と判定することがある（CI でGさん・Eさんが同じ記号になった）。</li>
+</ul>
+<h3>5.4 ③ 抜けの補完 <code>src/fill_gaps.py</code></h3>
+<pre><code class="language-powershell">$env:PYTHONUTF8=1; .venv\Scripts\python src\fill_gaps.py INPUT\&lt;名前&gt;.m4a
+</code></pre>
+<p>Whisper が長い発言を数文字に潰す不具合への対策（docs/issue/issue_md/ISSUE-011）。CI では約70秒の報告が「承知です。」の5文字になっていた。</p>
+<table>
+<thead>
+<tr>
+<th>検出の条件</th>
+<th>処理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10秒以上のセグメントで、1秒あたり1.5字未満（通常の発話は5〜8字/秒）</td>
+<td>pyannote が発話を検出した部分だけを VAD なしで文字起こしし直し、置き換える</td>
+</tr>
+<tr>
+<td>pyannote が3秒以上の発話を検出しているのに、Whisper のセグメントが20%未満しか覆っていない</td>
+<td>同様に文字起こしして追加する</td>
+</tr>
+</tbody>
+</table>
+<p>補完した区間は <code>.meta.json</code> の <code>gap_fill</code> に記録し、話者を割り当て直して <code>.speakers.txt</code> を作り直す。</p>
+<h3>5.5 ④ 議事録の作成（Claude）</h3>
+<p><strong>現状</strong>：議事録作成スキル（<code>.claude/skills/minutes/SKILL.md</code>）の手順に沿って、Claude Code の中で Claude が <code>.speakers.txt</code> を読んで md を書く。<strong>作成ルールの正本はスキルの <code>references/writing-rules.md</code></strong>。以下はその要約。</p>
+<p>話者対応表は <code>src/speaker_samples.py</code> で話者ごとの発言例を出し、記録者が決める。用語集は <code>src/glossary_tool.py dump</code> で読み出して参照する。</p>
+<p><strong>入力</strong></p>
+<ol>
+<li><code>transcripts/&lt;名前&gt;/&lt;名前&gt;.speakers.txt</code></li>
+<li>会議情報ファイル <code>INPUT/&lt;名前&gt;.会議情報.txt</code>（記録者が議事録作成の前に記入。<code>src/meeting_info.py init</code> でひな形を作る）
+   - 会議名（記録者が決める。ルールなし）、日時、場所、会議の種類（チェックイン / ヒアリング / その他）、記録者、参加者、資料
+   - <code>[話者対応表]</code>：<code>SPEAKER_00: 氏名</code>。空欄なら Claude が発言例から推定して「（AI推定）」付きで書き込み、該当の発言に【推定】を付ける
+   - 予定表とは連携しない</li>
+<li>参加者・関係者の所属と名簿（用語集の「人名」シート）。名簿にない・表記が確かでない人名は <code>氏名【要確認：人名】</code> として残し、記録者が最後に直す</li>
+<li>用語集（「用語」シート：正式表記・誤変換例）</li>
+</ol>
+<p><strong>作成ルール</strong>（検証計画 3.3 と Issue の決定事項）</p>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>ルール</th>
+<th>根拠</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>発言にないことは書かない</td>
+<td>検証計画 3.3</td>
+</tr>
+<tr>
+<td>2</td>
+<td>確度は語尾で書き分け、発言より強く書かない</td>
+<td>検証計画 3.3</td>
+</tr>
+<tr>
+<td>3</td>
+<td>文字起こしにない語に直した箇所は【推定：元の語】、聞き取れない箇所は【聞き取り不明：元の語】、確認が必要な箇所は【要確認：内容】。<strong>印を付けずに言い換えない</strong>。崩れた箇所も飛ばさずに印を付けて残す</td>
+<td>ISSUE-014・015</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>拾えるものはすべて拾う</strong>。省略の判断は記録者が行う</td>
+<td>ISSUE-004・011</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>質問と回答は対で残す</strong>。質問を回答側の説明に盛り込んでもよいが、情報を落とさない</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>本文では具体例・経緯を省かない</strong>（決定事項・TODO では要約してよい）</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>7</td>
+<td>話し言葉の崩れた語順は、意味を変えずに書き言葉に整える（主語を前、述語を後）</td>
+<td>ISSUE-003・010</td>
+</tr>
+<tr>
+<td>8</td>
+<td>用語・人名は用語集の正式表記で書く</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>9</td>
+<td>画面共有された資料の位置に <code>[(画像内容名)]</code> の枠を置く</td>
+<td>ISSUE-013</td>
+</tr>
+<tr>
+<td>10</td>
+<td>冒頭に【決定事項】【TODO】（担当・期限）をまとめる</td>
+<td>ISSUE-009</td>
+</tr>
+</tbody>
+</table>
+<p><strong>見出しの付け方</strong>（人手版の2会議から読み取った規則。会議の種類は Claude が冒頭のやり取りから判断する）</p>
+<table>
+<thead>
+<tr>
+<th>会議の種類</th>
+<th>見分け方</th>
+<th>見出しの形</th>
+<th>区切り方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>チェックイン形式（CI など）</td>
+<td>司会が「〇〇さんお願いします」と順に指名する</td>
+<td><code>〇〇さんの会議/議題名</code></td>
+<td>指名された人ごとに区切り、その人の報告の中で話題（予定・タスク・相談事項）が変わるところでさらに区切る。質疑はその話題の見出しの下に入れる。全員向けの連絡は <code>全体/…</code></td>
+</tr>
+<tr>
+<td>ヒアリング形式</td>
+<td>聞き手が質問し、相手が業務を説明する</td>
+<td><code>取引先・対象/区分：内容</code></td>
+<td>聞き手の新しい質問、「最後に取引先Q…」などの話題の切り替え、画面共有の開始で区切る。取引先・対象（取引先P、取引先R、取引先Qなど）が変わったら見出しの前半を変える</td>
+</tr>
+</tbody>
+</table>
+<p>ヒアリング形式の区分は、その見出しの中のやり取りの性質で決める。</p>
+<table>
+<thead>
+<tr>
+<th>区分</th>
+<th>使う場面</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>確認</td>
+<td>業務の内容・流れ・仕組みを質問して確かめるやり取り</td>
+</tr>
+<tr>
+<td>課題</td>
+<td>話し手が困っていること、手間・不具合が起きていること</td>
+</tr>
+<tr>
+<td>懸念</td>
+<td>まだ起きていない、または起きているか分からないが、問題になりうること</td>
+</tr>
+<tr>
+<td>活動</td>
+<td>話し手が行った取り組み（提案など）</td>
+</tr>
+<tr>
+<td>コメント</td>
+<td>聞き手側の意見・所感・今後の方針</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>見出しの「議題名・内容」は、その区切りの中の発言から作る。発言にない言葉で見出しを作らない。</li>
+<li>見出しの付け方は Claude の判断によるため、同じ会議でも作るたびに区切りが変わる可能性がある（ISSUE-003）。</li>
+</ul>
+<p><strong>md の書式</strong>（⑥の入力）</p>
+<pre><code class="language-markdown"># 会議名
+| 日時 | 2026/11/20(金) |
+| 場所 | |
+| 参加者 | 部署：氏名、氏名(記) / 部署：氏名 |
+| 資料 | |
+
+【決定事項】
+- 決定事項。(発言者)
+【TODO】
+- 内容（担当：氏名、期限：…）
+【会議内容】
+## Cさんの会議/議題名            ← チェックイン形式
+## 取引先P/確認：内容               ← ヒアリング形式（区分：確認・課題・懸念・活動・コメント）
+発言内容。(発言者・敬称略)
+[(画像内容名)]
+&gt; 末尾の【AI作成メモ】に入る注記
+</code></pre>
+<h3>5.6 ⑤ 自己点検 <code>src/check_coverage.py</code></h3>
+<pre><code class="language-powershell">$env:PYTHONUTF8=1; .venv\Scripts\python src\check_coverage.py transcripts\&lt;名前&gt;\&lt;名前&gt;.json minutes\&lt;名前&gt;\&lt;名前&gt;_議事録.md
+</code></pre>
+<p>議事録の md を作った後に実行し、結果（<code>minutes/&lt;名前&gt;/&lt;名前&gt;_議事録.check.md</code>）を見て④に戻って直す（docs/issue/issue_md/ISSUE-014・015）。</p>
+<table>
+<thead>
+<tr>
+<th>点検</th>
+<th>方法</th>
+<th>出力</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抜け</td>
+<td>文字起こしの各セグメントから内容語（漢字・カタカナ・英数字の語、数字）を取り出し、議事録に含まれる割合が50%未満のセグメントを一覧にする。照合前に、用語集の「誤変換例→正式表記」で文字起こしを補正する</td>
+<td>抜けの候補（時刻・話者・文字起こし・議事録にない語）</td>
+</tr>
+<tr>
+<td>根拠のない語</td>
+<td>議事録のカタカナ・英字の語のうち、文字起こしにも用語集にもないものを一覧にする。【推定】の印を付けた語は対象外</td>
+<td>印のない言い換えの候補</td>
+</tr>
+</tbody>
+</table>
+<p>一覧は機械的な候補。最後は Claude または記録者が、文字起こしと議事録を見て判断する。</p>
+<h3>5.7 ⑥ Word 出力 <code>src/make_docx.py</code></h3>
+<pre><code class="language-powershell">$env:PYTHONUTF8=1; .venv\Scripts\python src\make_docx.py minutes\&lt;名前&gt;\&lt;名前&gt;_議事録.md --type &lt;チェックイン|ヒアリング|その他&gt;
+</code></pre>
+<ul>
+<li>記録者が参考に示した人手版の書式を<strong>固定仕様</strong>とする（docs/issue/issue_md/ISSUE-003。詳細は <code>.claude/skills/minutes/references/format-spec.md</code>）。会議の種類に応じて固定テンプレート（<code>.claude/skills/minutes/assets/template_checkin.docx</code> / <code>template_hearing.docx</code>、人手版の複製）を選び、用紙（レター）、フォント（Meiryo UI）、冒頭の2列の表、見出し（太字・下線、番号付きリスト1段目）、本文（リスト2段目）の書式を引き継ぐ。</li>
+<li>構成：冒頭の表 →【決定事項】→【TODO】→【会議内容】→【AI作成メモ】。</li>
+<li>【推定】【聞き取り不明】【要確認】は黄色の蛍光ペンで示す（ISSUE-007）。</li>
+</ul>
+<h3>5.8 ⑦ 用語集の追加候補 <code>src/glossary_tool.py</code></h3>
+<pre><code class="language-powershell">$env:PYTHONUTF8=1; .venv\Scripts\python src\glossary_tool.py candidates transcripts\&lt;名前&gt;\&lt;名前&gt;.json minutes\&lt;名前&gt;\&lt;名前&gt;_議事録.md
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>候補の種類</th>
+<th>抽出元</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>推定</td>
+<td>議事録で <code>語【推定：「元の語」】</code> とした箇所（元の語＝文字起こしの誤変換、語＝Claude が推定した表記）</td>
+</tr>
+<tr>
+<td>聞き取り不明</td>
+<td>議事録で <code>【聞き取り不明：「元の語」】</code> とした箇所</td>
+</tr>
+<tr>
+<td>頻出語</td>
+<td>文字起こしに3回以上出るカタカナ・英字の語で、用語集にないもの（一般的な語は除く）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>用語集の「候補」シート（初回に自動作成）に「未確認」で追記し、件数と主な語を画面に出す。Claude はこれを記録者に伝える。</li>
+<li>記録者が「登録先（用語 / 人名 / 不要）」「正式表記（確認後）」「意味」を記入し、「確認済」にする。Claude は記録者の指示を受けて「用語」「人名」シートに反映する。</li>
+<li>用語集の Excel を開いていると保存に失敗する。</li>
+</ul>
+<h3>5.9 作業時間の記録 <code>src/timing.py</code></h3>
+<p>①〜③は <code>run_pipeline.py</code> が、④〜⑦は Claude が <code>timing.py &lt;名前&gt; start/end "&lt;工程名&gt;"</code> で <code>transcripts/&lt;名前&gt;/&lt;名前&gt;.timing.json</code> に記録する。<code>timing.py &lt;名前&gt; show</code> で一覧を表示する。</p>
+<hr />
+<h2>6. 処理時間（検証時の実績、CPU 8スレッド）</h2>
+<table>
+<thead>
+<tr>
+<th>工程</th>
+<th>CI（音声28分）</th>
+<th>Bさんヒアリング（音声63分）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 文字起こし</td>
+<td>40分（音声の1.4倍）</td>
+<td>101分（1.6倍）</td>
+</tr>
+<tr>
+<td>② 話者分離</td>
+<td>80分（2.8倍）</td>
+<td>約5.9時間（5.6倍）</td>
+</tr>
+<tr>
+<td>③ 抜けの補完</td>
+<td>数分</td>
+<td>数分</td>
+</tr>
+<tr>
+<td>④ 議事録の作成</td>
+<td>約15〜20分</td>
+<td>約15分（用語集を反映した版は約30分）</td>
+</tr>
+<tr>
+<td>⑤ 自己点検と修正</td>
+<td>数分</td>
+<td>数分</td>
+</tr>
+<tr>
+<td>⑥ Word 出力</td>
+<td>数秒</td>
+<td>数秒</td>
+</tr>
+</tbody>
+</table>
+<p>※①と②を同時に動かした時間を含むため、単独で動かした場合より遅い。今後は <code>run_pipeline.py</code> で工程ごとに計測する。</p>
+<hr />
+<h2>7. 今後の変更点</h2>
+<h3>7.1 残っている課題</h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>内容</th>
+<th>状態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ISSUE-002</td>
+<td>入力を「音声」「テキスト（Teams・Notion の文字起こし）」「テキスト＋音声」の3通りにする</td>
+<td>決定・未実装</td>
+</tr>
+<tr>
+<td>ISSUE-005</td>
+<td>用語集の運用（⑦の候補を記録者が確認し、用語・人名シートに反映する。Whisper への用語の受け渡しは未実装）</td>
+<td>決定・運用中</td>
+</tr>
+<tr>
+<td>ISSUE-020</td>
+<td>議事録作成（④）を Claude 以外で代替できるか試す</td>
+<td>未着手</td>
+</tr>
+<tr>
+<td>ISSUE-018</td>
+<td>処理の高速化（漏れのない議事録ができてから検討）</td>
+<td>未着手</td>
+</tr>
+<tr>
+<td>ISSUE-019</td>
+<td>ノイズの多い音声・テキストへの対応（問題が出たら検討）</td>
+<td>保留</td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 対応済み（本設計書に反映済み）</h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>内容</th>
+<th>反映先</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ISSUE-001</td>
+<td>話者対応表は会議情報ファイルに記入。なければ AI が推定し【推定】を付ける</td>
+<td>5.5</td>
+</tr>
+<tr>
+<td>ISSUE-003</td>
+<td>人手版の書式を固定仕様にし、会議の種類でテンプレートを切り替える</td>
+<td>5.5、5.7</td>
+</tr>
+<tr>
+<td>ISSUE-004・011・015</td>
+<td>拾えるものはすべて拾う。具体例・経緯を本文で省かない。抜けの補完・自己点検</td>
+<td>5.4、5.5、5.6</td>
+</tr>
+<tr>
+<td>ISSUE-006</td>
+<td>名簿にない人名は【要確認：人名】で残し、記録者が直す</td>
+<td>5.5</td>
+</tr>
+<tr>
+<td>ISSUE-007・009・013</td>
+<td>蛍光ペン、【決定事項】【TODO】、<code>[(画像内容名)]</code></td>
+<td>5.5、5.7</td>
+</tr>
+<tr>
+<td>ISSUE-008</td>
+<td>会議情報（会議名など）は議事録作成の前に記録者が入力。予定表とは連携しない</td>
+<td>5.5</td>
+</tr>
+<tr>
+<td>ISSUE-012</td>
+<td>音声はクラウドに送らない（フックで禁止）</td>
+<td>2.5</td>
+</tr>
+<tr>
+<td>ISSUE-014</td>
+<td>印のない言い換えを自己点検で検出</td>
+<td>5.6</td>
+</tr>
+<tr>
+<td>ISSUE-017</td>
+<td>ハイブリッド（スクリプト＋議事録作成スキル）</td>
+<td>4、5.5</td>
+</tr>
+</tbody>
+</table>
+<p>全 Issue の状態は <code>docs/issue/Issue一覧.xlsx</code> を参照。</p></section><section id="detail"><h2>詳細設計書</h2><p>（詳細設計書はまだありません。開発サイクルの最後に design-detail スキルで作成します）</p></section><section id="verification"><h2>評価（テスト結果）</h2><p>一覧の元データ：<code>docs/verification/results/*.json</code>（Excel：<code>docs/verification/テスト結果一覧.xlsx</code>）</p><div class="scroll"><table><thead><tr><th>run_id</th><th>区分</th><th>音声(分)</th><th>処理時間合計(分)</th><th>文字数</th><th>推定/不明/要確認</th><th>抜けの候補</th><th>無断推定</th><th>話者誤り</th><th>人手版文字数</th></tr></thead><tbody><tr><td>20261123-1732_20261120_CI_基本試行</td><td>基本試行</td><td>28.3</td><td>120.3</td><td>4241</td><td>37/15/5</td><td>12</td><td>1</td><td>0</td><td>2009</td></tr><tr><td>20261123-1733_20261120_CI_追加試行</td><td>追加試行</td><td>28.3</td><td>120.3</td><td>4713</td><td>29/11/3</td><td>2</td><td>—</td><td>—</td><td>—</td></tr><tr><td>20261123-1733_20261120_Bさんヒアリング_基本試行</td><td>基本試行</td><td>63.3</td><td>909.4</td><td>5012</td><td>43/8/4</td><td>67</td><td>3</td><td>13</td><td>10073</td></tr><tr><td>20261123-1733_20261120_Bさんヒアリング_追加試行</td><td>追加試行</td><td>63.3</td><td>909.4</td><td>12294</td><td>14/11/3</td><td>14</td><td>—</td><td>—</td><td>—</td></tr></tbody></table></div><h3>回ごとの報告</h3><details id="report-0" class="doc"><summary>20261123-1732_20261120_CI_基本試行</summary><div class="doc-body"><ul>
+<li>区分：基本試行</li>
+<li>記録日時：2026-11-23T17:32:57</li>
+</ul>
+<h2>会議</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>名前</td>
+<td>20261120_CI</td>
+</tr>
+<tr>
+<td>会議名</td>
+<td>—</td>
+</tr>
+<tr>
+<td>会議の種類</td>
+<td>—</td>
+</tr>
+<tr>
+<td>参加者数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>音声の長さ_分</td>
+<td>28.3</td>
+</tr>
+</tbody>
+</table>
+<h2>処理時間（分）</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 文字起こし</td>
+<td>39.9</td>
+</tr>
+<tr>
+<td>② 話者分離</td>
+<td>80.4</td>
+</tr>
+<tr>
+<td>合計</td>
+<td>120.3</td>
+</tr>
+</tbody>
+</table>
+<h2>文字起こし</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>セグメント数</td>
+<td>385</td>
+</tr>
+<tr>
+<td>検出話者数</td>
+<td>5</td>
+</tr>
+<tr>
+<td>補完セグメント数</td>
+<td>30</td>
+</tr>
+<tr>
+<td>話者対応表</td>
+<td>記入なし</td>
+</tr>
+</tbody>
+</table>
+<h2>議事録</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字数</td>
+<td>4241</td>
+</tr>
+<tr>
+<td>段落数</td>
+<td>67</td>
+</tr>
+<tr>
+<td>見出し数</td>
+<td>14</td>
+</tr>
+<tr>
+<td>決定事項数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>TODO数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>画像枠数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>推定</td>
+<td>37</td>
+</tr>
+<tr>
+<td>聞き取り不明</td>
+<td>15</td>
+</tr>
+<tr>
+<td>要確認</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<h2>自己点検</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抜けの候補</td>
+<td>12</td>
+</tr>
+<tr>
+<td>根拠のない語の候補</td>
+<td>16</td>
+</tr>
+</tbody>
+</table>
+<h2>人手版との比較</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>付け足し</td>
+<td>0</td>
+</tr>
+<tr>
+<td>確度の格上げ</td>
+<td>—</td>
+</tr>
+<tr>
+<td>無断推定</td>
+<td>1</td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td>0</td>
+</tr>
+<tr>
+<td>網羅数</td>
+<td>11</td>
+</tr>
+<tr>
+<td>キーポイント数</td>
+<td>11</td>
+</tr>
+<tr>
+<td>人手版文字数</td>
+<td>2009</td>
+</tr>
+</tbody>
+</table>
+<h2>用語集の追加候補</h2>
+<p>0 件</p>
+<h2>所見</h2>
+<ul>
+<li>人手版を見ずに作成（盲検）。社内用語・人名の誤変換が多い（ISSUE-005・006）</li>
+<li>無断推定1件：「家電リスト」（正：架電リスト）</li>
+</ul></div></details><details id="report-1" class="doc"><summary>20261123-1733_20261120_CI_追加試行</summary><div class="doc-body"><ul>
+<li>区分：追加試行</li>
+<li>記録日時：2026-11-23T17:33:12</li>
+</ul>
+<h2>会議</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>名前</td>
+<td>20261120_CI</td>
+</tr>
+<tr>
+<td>会議名</td>
+<td>—</td>
+</tr>
+<tr>
+<td>会議の種類</td>
+<td>—</td>
+</tr>
+<tr>
+<td>参加者数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>音声の長さ_分</td>
+<td>28.3</td>
+</tr>
+</tbody>
+</table>
+<h2>処理時間（分）</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 文字起こし</td>
+<td>39.9</td>
+</tr>
+<tr>
+<td>② 話者分離</td>
+<td>80.4</td>
+</tr>
+<tr>
+<td>合計</td>
+<td>120.3</td>
+</tr>
+</tbody>
+</table>
+<h2>文字起こし</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>セグメント数</td>
+<td>385</td>
+</tr>
+<tr>
+<td>検出話者数</td>
+<td>5</td>
+</tr>
+<tr>
+<td>補完セグメント数</td>
+<td>30</td>
+</tr>
+<tr>
+<td>話者対応表</td>
+<td>記入なし</td>
+</tr>
+</tbody>
+</table>
+<h2>議事録</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字数</td>
+<td>4713</td>
+</tr>
+<tr>
+<td>段落数</td>
+<td>75</td>
+</tr>
+<tr>
+<td>見出し数</td>
+<td>14</td>
+</tr>
+<tr>
+<td>決定事項数</td>
+<td>2</td>
+</tr>
+<tr>
+<td>TODO数</td>
+<td>5</td>
+</tr>
+<tr>
+<td>画像枠数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>推定</td>
+<td>29</td>
+</tr>
+<tr>
+<td>聞き取り不明</td>
+<td>11</td>
+</tr>
+<tr>
+<td>要確認</td>
+<td>3</td>
+</tr>
+</tbody>
+</table>
+<h2>自己点検</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抜けの候補</td>
+<td>2</td>
+</tr>
+<tr>
+<td>根拠のない語の候補</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<h2>人手版との比較</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>付け足し</td>
+<td>—</td>
+</tr>
+<tr>
+<td>確度の格上げ</td>
+<td>—</td>
+</tr>
+<tr>
+<td>無断推定</td>
+<td>—</td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td>—</td>
+</tr>
+<tr>
+<td>網羅数</td>
+<td>—</td>
+</tr>
+<tr>
+<td>キーポイント数</td>
+<td>—</td>
+</tr>
+<tr>
+<td>人手版文字数</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2>用語集の追加候補</h2>
+<p>0 件</p>
+<h2>所見</h2>
+<ul>
+<li>用語集＋自己点検を反映。人手版を読んだ後に作成（盲検ではない・参考扱い）</li>
+</ul></div></details><details id="report-2" class="doc"><summary>20261123-1733_20261120_Bさんヒアリング_基本試行</summary><div class="doc-body"><ul>
+<li>区分：基本試行</li>
+<li>記録日時：2026-11-23T17:33:04</li>
+</ul>
+<h2>会議</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>名前</td>
+<td>20261120_Bさんヒアリング</td>
+</tr>
+<tr>
+<td>会議名</td>
+<td>—</td>
+</tr>
+<tr>
+<td>会議の種類</td>
+<td>—</td>
+</tr>
+<tr>
+<td>参加者数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>音声の長さ_分</td>
+<td>63.3</td>
+</tr>
+</tbody>
+</table>
+<h2>処理時間（分）</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 文字起こし</td>
+<td>100.5</td>
+</tr>
+<tr>
+<td>② 話者分離</td>
+<td>808.9</td>
+</tr>
+<tr>
+<td>合計</td>
+<td>909.4</td>
+</tr>
+</tbody>
+</table>
+<h2>文字起こし</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>セグメント数</td>
+<td>796</td>
+</tr>
+<tr>
+<td>検出話者数</td>
+<td>6</td>
+</tr>
+<tr>
+<td>補完セグメント数</td>
+<td>55</td>
+</tr>
+<tr>
+<td>話者対応表</td>
+<td>記入なし</td>
+</tr>
+</tbody>
+</table>
+<h2>議事録</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字数</td>
+<td>5012</td>
+</tr>
+<tr>
+<td>段落数</td>
+<td>81</td>
+</tr>
+<tr>
+<td>見出し数</td>
+<td>17</td>
+</tr>
+<tr>
+<td>決定事項数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>TODO数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>画像枠数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>推定</td>
+<td>43</td>
+</tr>
+<tr>
+<td>聞き取り不明</td>
+<td>8</td>
+</tr>
+<tr>
+<td>要確認</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<h2>自己点検</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抜けの候補</td>
+<td>67</td>
+</tr>
+<tr>
+<td>根拠のない語の候補</td>
+<td>9</td>
+</tr>
+</tbody>
+</table>
+<h2>人手版との比較</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>付け足し</td>
+<td>—</td>
+</tr>
+<tr>
+<td>確度の格上げ</td>
+<td>—</td>
+</tr>
+<tr>
+<td>無断推定</td>
+<td>3</td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td>13</td>
+</tr>
+<tr>
+<td>網羅数</td>
+<td>—</td>
+</tr>
+<tr>
+<td>キーポイント数</td>
+<td>—</td>
+</tr>
+<tr>
+<td>人手版文字数</td>
+<td>10073</td>
+</tr>
+</tbody>
+</table>
+<h2>用語集の追加候補</h2>
+<p>0 件</p>
+<h2>所見</h2>
+<ul>
+<li>人手版を見ずに作成（盲検）。Fさんの13発言をDさんと誤認（ISSUE-001）</li>
+<li>印のない言い換え3件（ISSUE-014）、拾い漏れ8件（ISSUE-015）。要約しすぎで人手版より約4,000字少ない</li>
+</ul></div></details><details id="report-3" class="doc"><summary>20261123-1733_20261120_Bさんヒアリング_追加試行</summary><div class="doc-body"><ul>
+<li>区分：追加試行</li>
+<li>記録日時：2026-11-23T17:33:18</li>
+</ul>
+<h2>会議</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>名前</td>
+<td>20261120_Bさんヒアリング</td>
+</tr>
+<tr>
+<td>会議名</td>
+<td>—</td>
+</tr>
+<tr>
+<td>会議の種類</td>
+<td>—</td>
+</tr>
+<tr>
+<td>参加者数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>音声の長さ_分</td>
+<td>63.3</td>
+</tr>
+</tbody>
+</table>
+<h2>処理時間（分）</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 文字起こし</td>
+<td>100.5</td>
+</tr>
+<tr>
+<td>② 話者分離</td>
+<td>808.9</td>
+</tr>
+<tr>
+<td>合計</td>
+<td>909.4</td>
+</tr>
+</tbody>
+</table>
+<h2>文字起こし</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>セグメント数</td>
+<td>796</td>
+</tr>
+<tr>
+<td>検出話者数</td>
+<td>6</td>
+</tr>
+<tr>
+<td>補完セグメント数</td>
+<td>55</td>
+</tr>
+<tr>
+<td>話者対応表</td>
+<td>記入なし</td>
+</tr>
+</tbody>
+</table>
+<h2>議事録</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字数</td>
+<td>12294</td>
+</tr>
+<tr>
+<td>段落数</td>
+<td>182</td>
+</tr>
+<tr>
+<td>見出し数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>決定事項数</td>
+<td>0</td>
+</tr>
+<tr>
+<td>TODO数</td>
+<td>5</td>
+</tr>
+<tr>
+<td>画像枠数</td>
+<td>7</td>
+</tr>
+<tr>
+<td>推定</td>
+<td>14</td>
+</tr>
+<tr>
+<td>聞き取り不明</td>
+<td>11</td>
+</tr>
+<tr>
+<td>要確認</td>
+<td>3</td>
+</tr>
+</tbody>
+</table>
+<h2>自己点検</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抜けの候補</td>
+<td>14</td>
+</tr>
+<tr>
+<td>根拠のない語の候補</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<h2>人手版との比較</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>付け足し</td>
+<td>—</td>
+</tr>
+<tr>
+<td>確度の格上げ</td>
+<td>—</td>
+</tr>
+<tr>
+<td>無断推定</td>
+<td>—</td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td>—</td>
+</tr>
+<tr>
+<td>網羅数</td>
+<td>—</td>
+</tr>
+<tr>
+<td>キーポイント数</td>
+<td>—</td>
+</tr>
+<tr>
+<td>人手版文字数</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2>用語集の追加候補</h2>
+<p>0 件</p>
+<h2>所見</h2>
+<ul>
+<li>用語集＋話者対応表＋自己点検を反映。人手版を読んだ後に作成（盲検ではない・参考扱い）</li>
+<li>自己点検で印のない言い換え5件・抜け5件を検出して修正（ISSUE-014・015）</li>
+</ul></div></details><h3>検証計画・比較資料</h3><details id="verif-0" class="doc"><summary>2026/11/20 CI 人手版（R）と自動版（C）の比較</summary><div class="doc-body"><ul>
+<li>人手版 R：<code>INPUT/20261120_CI(他社T生産方式と子会社YのAI意見交換)_Ver0.1.docx</code>（Aさん作成）</li>
+<li>自動版 C：<a href="20261120_CI_自動版.md">20261120_CI_自動版.md</a>（Claude 作成。R を見ずに作成＝盲検）</li>
+<li>比較日：2026/11/23</li>
+<li>注意：検証計画 4.1 の正解データ（発言セグメント一覧・キーポイント一覧）はまだ作っていない。本書は R を基準にした一次比較で、合否判定ではない。</li>
+</ul>
+<hr />
+<h2>1. R から読み取れる議事録の要件</h2>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>要件</th>
+<th>R での実際</th>
+<th>C の対応</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td>冒頭に会議情報の表（会議名・日時と曜日・場所・参加者・資料）</td>
+<td>「2026/11/20(金) 16:30-17:00」「当社：C、…、A(記)」</td>
+<td>会議名・時刻・曜日・所属・記録者がない（音声からは分からない）</td>
+<td>ISSUE-008</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>参加者は敬称略、所属を付け、記録者に「(記)」</td>
+<td>「当社：C、D、G、E、A(記)」</td>
+<td>敬称付き・所属なし</td>
+<td>ISSUE-003</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>【会議内容】の下を「〇〇さんの会議/議題名」の見出しで区切る（人×議題）</td>
+<td>「Cさんの会議/Praの予算申請」など11見出し</td>
+<td>人ごとに「予定・タスク・質疑」で区切った</td>
+<td>ISSUE-003</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>発言は1段落にまとめ、末尾に（発言者・敬称略）を付ける</td>
+<td>「…学びたいところは学びたい。(C)」</td>
+<td>行頭に「Cさん：」</td>
+<td>ISSUE-003</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>発言者の一人称・口調を残す（「私」「〜と思っている」）</td>
+<td>「Nさんと私に落ちてきた」</td>
+<td>三人称の伝聞体に変換</td>
+<td>ISSUE-003</td>
+</tr>
+<tr>
+<td>R6</td>
+<td>業務上の論点に絞り、それ以外は書かない</td>
+<td>記録者（Aさん）自身の報告、KR 修正の議論、研修の連絡、体調、雑談、Eさんの商品マスター支援の申し出は記載なし</td>
+<td>すべて記載（R の約3倍、5,500字 vs 2,000字）</td>
+<td>ISSUE-004</td>
+</tr>
+<tr>
+<td>R7</td>
+<td>社内の略称・正式名で書く</td>
+<td>Pra、ステコミ、TGRV、BXG、BTM、架電、エネ事、CP、Novel、Github、TL</td>
+<td>誤変換のまま、または【推定】【聞き取り不明】</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>人名を正しく書く</td>
+<td>Lさん、Gさん（のツール）</td>
+<td>「Lさん」（誤り）、「二等差」（聞き取り不明）</td>
+<td>ISSUE-006</td>
+</tr>
+<tr>
+<td>R9</td>
+<td>不確かさの印は付けない</td>
+<td>【推定】などは一切なし</td>
+<td>36か所に印</td>
+<td>ISSUE-007</td>
+</tr>
+<tr>
+<td>R10</td>
+<td>決定事項・宿題の欄はない</td>
+<td>本文中に「確認する。(D)」のように書くだけ</td>
+<td>末尾に決定事項2件・宿題5件の表</td>
+<td>ISSUE-009</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>2. 要件に照らした C の誤り</h2>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>区分</th>
+<th>C の記載</th>
+<th>R・文字起こしでの実際</th>
+<th>原因</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>誤った推定</td>
+<td>IT 投資の「審査【推定】」</td>
+<td>ステコミ（文字起こし「捨て込み」）</td>
+<td>用語を知らない</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>2</td>
+<td>無断の誤変換</td>
+<td>「家電リスト」</td>
+<td>架電リスト</td>
+<td>文字起こし。C は誤りに気づかず【推定】も付けていない</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>3</td>
+<td>無断の誤変換</td>
+<td>「ETM」【聞き取り不明】</td>
+<td>BTM</td>
+<td>文字起こし</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>4</td>
+<td>無断の誤変換</td>
+<td>「Lさん」</td>
+<td>Lさん</td>
+<td>文字起こし。人名で気づけない</td>
+<td>ISSUE-006</td>
+</tr>
+<tr>
+<td>5</td>
+<td>聞き取り不明</td>
+<td>「二等差」のツール</td>
+<td>Gさんのツール</td>
+<td>文字起こし（人名）</td>
+<td>ISSUE-006</td>
+</tr>
+<tr>
+<td>6</td>
+<td>聞き取り不明</td>
+<td>「リハ」「イノベーション」の端末、「BX」</td>
+<td>TGRV 環境、BXG</td>
+<td>文字起こし＋用語</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>7</td>
+<td>聞き取り不明</td>
+<td>Pさん（「節素流」）、「脱身入れ物流」</td>
+<td>部署9のPさん、脱みらい物流</td>
+<td>文字起こし＋用語</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>8</td>
+<td>要確認のまま</td>
+<td>原局側【推定】（「NG」）</td>
+<td>エネ事（「NG」＝エネジ）</td>
+<td>用語</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>9</td>
+<td>要確認のまま</td>
+<td>「ブランドプロジェクト」「プラノ」</td>
+<td>Pra（プラグマティクス）の略</td>
+<td>用語</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>10</td>
+<td>話者の推定</td>
+<td>Gさん・Eさんを内容から振り分け</td>
+<td>R と一致（振り分けは正しかった）</td>
+<td>話者分離が2名を1人と判定</td>
+<td>ISSUE-001</td>
+</tr>
+</tbody>
+</table>
+<p>付け足し（根拠となる発言がない記載）は、目視の範囲では見つかっていない。</p>
+<hr />
+<h2>3. R と C で解釈が分かれた箇所（どちらが正しいか未確定）</h2>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>箇所</th>
+<th>R</th>
+<th>C</th>
+<th>文字起こし</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>ツール引き継ぎへのDさんの返答</td>
+<td>「確認する。」</td>
+<td>「一旦これで大丈夫。」</td>
+<td>「すみません、食っていただいてましたよ。はい、一旦これで大丈夫です。」</td>
+<td>ISSUE-010</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Kさんの役割</td>
+<td>「御目通ししてほしいという依頼がKさんに来ている」</td>
+<td>「Kさん（マネージャー）から回ってきた」</td>
+<td>「これKさんからマネージャーから回ってくるんですけど」</td>
+<td>ISSUE-010</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Sチームリーダー</td>
+<td>「オーダーみらいで、企画部で経理のTLになる」</td>
+<td>「Sチームリーダー（企画部の経理のチームリーダー）」</td>
+<td>「真ん中ら辺でSチームリーダーご相談 これが企画部の経理のチームリーダーになります」</td>
+<td>ISSUE-010</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Eさんの発言者表記</td>
+<td>2か所で「(E)」</td>
+<td>Eさん</td>
+<td>— （R の誤記と思われる）</td>
+<td>ISSUE-010</td>
+</tr>
+<tr>
+<td>5</td>
+<td>次回定例の進め方</td>
+<td>「各種担当に進捗を持ち込んでもらい」</td>
+<td>「各主担当を割り当て、主担当が進捗を持ち込んで」</td>
+<td>「皆様各主担当というのを割り当てて その方から進捗を持ち込んで」</td>
+<td>ISSUE-010</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>結論（2026/11/23 Aさん確認）</strong>：No.1・3 は R が議事録として書き直したもので、C の修正は不要。No.2 は文字起こしが正しいが、語順を整えて書くべき（ISSUE-003）。No.4 は R の誤記。No.5 は意味が同じなので差分としない。</p>
+<hr />
+<h2>4. 一次所見（CI のみ）</h2>
+<p><strong>内容の拾い漏れ</strong>：R に書かれた議題11件は、すべて C にも含まれていた。</p>
+<p><strong>C が R に届かない点</strong>：
+1. 書式（見出しの切り方、発言者を末尾に書く、敬称略、一人称）が違う。→ 書式の指定で解決できる見込み。
+2. 取捨選択をしていない。R は業務論点に絞って約2,000字、C は全部書いて約5,500字。→ 何を省くかの基準が必要。
+3. 社内用語と人名の誤変換を直せない。不確かな箇所に印を付けても、正しい語には届かない。→ 用語集・人名簿が必要。
+4. 日時・場所・所属が音声に入っていない。→ 予定表など別の情報源が必要。</p>
+<p><strong>C の方が良かった可能性がある点</strong>：決定事項・宿題の整理、R の誤記（「E」）や解釈の揺れがないこと。ただし解釈の揺れは、正解データを作るまで確定しない。</p></div></details><details id="verif-1" class="doc"><summary>2026/11/20 Bさんヒアリング 人手版（R）と自動版（C）の比較</summary><div class="doc-body"><ul>
+<li>人手版 R：<code>INPUT/20261120_Bさんヒアリング_Ver0.1.docx</code>（Aさん作成）</li>
+<li>自動版 C：<a href="20261120_Bさんヒアリング_自動版.md">20261120_Bさんヒアリング_自動版.md</a>（Claude 作成。この会議の R を見ずに作成＝盲検。書式は CI の比較結果を反映）</li>
+<li>比較日：2026/11/23</li>
+<li>評価の扱い：検証計画 4.4 追記どおり、書式・取捨選択は R、事実の正確さは発言を基準にする。</li>
+</ul>
+<hr />
+<h2>1. 分量・話者</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>R</th>
+<th>C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字数</td>
+<td>約10,100字</td>
+<td>約6,100字（不確かさの印57か所を除く）</td>
+</tr>
+<tr>
+<td>見出し数</td>
+<td>24（「取引先P/確認：…」など）</td>
+<td>14（話題ごと）</td>
+</tr>
+<tr>
+<td>発言者の内訳</td>
+<td>B61、F19、I8、A8、H6、<strong>D0</strong></td>
+<td>B中心。Fは0、<strong>D【推定】13</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>CI との違い</strong>：CI では R の方が短く、C が R の3倍だった。ヒアリングでは R の方が長く、R は発言をほぼすべて拾っている。会議の種類で、R の取捨選択の基準が違う。</p>
+<hr />
+<h2>2. R から読み取れる要件（CI から追加・変わったもの）</h2>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>要件</th>
+<th>R での実際</th>
+<th>C の対応</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>H1</td>
+<td>参加者に組織・グループを階層で書く</td>
+<td>「部署1：D、A(記) / 子会社X(部署1/BX領域)：I、H、F / 子会社X(部署1/チーム2)：B」</td>
+<td>所属なし</td>
+<td>ISSUE-008</td>
+</tr>
+<tr>
+<td>H2</td>
+<td>見出しは「取引先/区分：内容」。区分は 確認・課題・懸念・活動・コメント</td>
+<td>「取引先P/課題：現場配送品で請求金額が丸め誤差で1円ズレる」（確認11・課題3・懸念3・活動1・コメント1）</td>
+<td>話題名だけの見出し。区分なし</td>
+<td>ISSUE-003</td>
+</tr>
+<tr>
+<td>H3</td>
+<td>画面共有された資料の位置に、画像の差し込み枠を置く</td>
+<td>「[取引先Pに提案している価格]」「[マニュアル]」「[検収差異の状況]」など5か所</td>
+<td>「資料」欄に名前を書いただけ</td>
+<td>ISSUE-013</td>
+</tr>
+<tr>
+<td>H4</td>
+<td>ヒアリングでは発言をほぼすべて拾う</td>
+<td>雑談以外はほぼ全部</td>
+<td>聞き取りにくい箇所を飛ばした（3章）</td>
+<td>ISSUE-004、ISSUE-015</td>
+</tr>
+<tr>
+<td>H5</td>
+<td>社名・取引先はカタカナ・正式表記に統一</td>
+<td>取引先P、取引先R、取引先S（取引先S）、当社グループ（当社グループ）</td>
+<td>取引先P、取引先R、取引先S</td>
+<td>ISSUE-005</td>
+</tr>
+</tbody>
+</table>
+<p>CI で確認した要件（敬称略、発言末尾に（氏名）、語順を整える）は C に反映済みで、R と一致していた。</p>
+<hr />
+<h2>3. 要件・発言に照らした C の誤り</h2>
+<h3>3.1 話者誤り（最も大きい誤り）</h3>
+<p>C で「D【推定】」とした13か所は、R ではすべて<strong>Fさん</strong>。話者分離の SPEAKER_03 を、54:11「Fさんは大丈夫ですか」の呼びかけからDさんと推定したが、実際は「Fさん」と思われる。R にDさんの発言はない。→ ISSUE-001</p>
+<p>その他の対応付け（B＝SPEAKER_05、A＝02、H＝01、司会＝04 はIさん）は R と一致。</p>
+<h3>3.2 印を付けずに誤った語に置き換えた（検証計画の「無断推定」）</h3>
+<table>
+<thead>
+<tr>
+<th>C の記載</th>
+<th>R</th>
+<th>文字起こし</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>受発注オペレーションに近い</td>
+<td>検収オートメーションのスコープ</td>
+<td>研修オペレーション</td>
+<td>ISSUE-014</td>
+</tr>
+<tr>
+<td>受発注レス化</td>
+<td>受発注シームレス化</td>
+<td>受発中心レス化、ジャパンチューシブレス</td>
+<td>ISSUE-014</td>
+</tr>
+<tr>
+<td>今日のヒアリング内容を分解・構造化したものが欲しい（H）</td>
+<td>受発注シームレス化を先に検討するため、Bさんの資料が欲しい（H）</td>
+<td>今日ヒアリングした内容をちょっと分解して構造とかいただいても</td>
+<td>ISSUE-014</td>
+</tr>
+</tbody>
+</table>
+<h3>3.3 【推定】で直したが外れた・用語の誤変換</h3>
+<table>
+<thead>
+<tr>
+<th>C の記載</th>
+<th>R</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>富士工業【推定：「フジテック」】</td>
+<td>フジテック</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>代理店【推定：「大工店」】</td>
+<td>代行店（RS 向け）</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>需給事務センター【推定】</td>
+<td>JEC</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>購買【聞き取り不明：「交番」】で調整</td>
+<td>メーカー3とは今調整していると思う</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>テジコス【聞き取り不明】</td>
+<td>受発注システム</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>デジエ【聞き取り不明】</td>
+<td>デジエ（R も同じ表記）</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>（取引先Qの）「宝」→記載なし</td>
+<td>高田（の住設機器）</td>
+<td>ISSUE-006</td>
+</tr>
+<tr>
+<td>「Mさん」→記載なし</td>
+<td>Mさん</td>
+<td>ISSUE-006</td>
+</tr>
+<tr>
+<td>「Oさん」→記載なし</td>
+<td>Oさん</td>
+<td>ISSUE-006</td>
+</tr>
+<tr>
+<td>ノア</td>
+<td>NOAH</td>
+<td>ISSUE-005</td>
+</tr>
+<tr>
+<td>マスター（の登録）</td>
+<td>HATLi のマスタ、部署3 マスタ管理のJさん</td>
+<td>ISSUE-005</td>
+</tr>
+</tbody>
+</table>
+<h3>3.4 拾い漏れ（R にあり C にない）</h3>
+<table>
+<thead>
+<tr>
+<th>R の項目</th>
+<th>発言者</th>
+<th>文字起こしの状態</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>取引先S の特値はあるか → 基本ない。取引先P価格からさらに特値はない</td>
+<td>I・B</td>
+<td>崩れている（11:34〜12:42）</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>受発注システム が価格改定のタイミングでバッチを回して通知すればよい</td>
+<td>F</td>
+<td>「手事故が本当に改定のタイミングでバッチリと」</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>納品日基準で価格が変わる商品があると困る（注文時1万円、納品時1万5千円）</td>
+<td>F</td>
+<td>拾える状態だった</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>PHP の時の強制検収の影響か</td>
+<td>A</td>
+<td>拾える状態だった</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>Oさんに、今後も発生するかもしれないのでやった方がよいと言われた</td>
+<td>B</td>
+<td>「Oさん」</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>これは営業企画Gの仕事だと思う</td>
+<td>H</td>
+<td>「国民って企画じゃないかな」</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>Mさん等から採用購買の話が来る</td>
+<td>B</td>
+<td>「Mさんとか採用勾配で」</td>
+<td>ISSUE-015</td>
+</tr>
+<tr>
+<td>違算処理の時は特値のように別途帳票を作るのか</td>
+<td>（R はB）</td>
+<td>拾える状態だった</td>
+<td>ISSUE-015</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>4. R 側で確認したい箇所</h2>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>箇所</th>
+<th>R</th>
+<th>発言・文字起こし</th>
+<th>関連 Issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>日時</td>
+<td>16:30-17:00（CI と同じ）</td>
+<td>録音は約63分</td>
+<td>ISSUE-016</td>
+</tr>
+<tr>
+<td>2</td>
+<td>題名</td>
+<td>「取引先Pの在庫業務」</td>
+<td>在庫の話は一部。「取引先Pの業務」の誤記か</td>
+<td>ISSUE-016</td>
+</tr>
+<tr>
+<td>3</td>
+<td>MAX の商品</td>
+<td>電気ガス暖</td>
+<td>「電気バス団」（浴室暖房乾燥機＝バス暖か）</td>
+<td>ISSUE-016</td>
+</tr>
+<tr>
+<td>4</td>
+<td>リモコンの金額</td>
+<td>通常13.557円、1件だけ13,578円</td>
+<td>「1万3557円」「1個だけ1円高い」→ 13,558円か</td>
+<td>ISSUE-016</td>
+</tr>
+<tr>
+<td>5</td>
+<td>最後の回答の発言者</td>
+<td>「ガス機器は…発生していない。(A)」</td>
+<td>Bさんの回答</td>
+<td>ISSUE-016</td>
+</tr>
+<tr>
+<td>6</td>
+<td>違算の帳票の質問者</td>
+<td>(B)</td>
+<td>Aさんの質問（41:04）</td>
+<td>ISSUE-016</td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論（2026/11/23 Aさん確認）</strong>：No.1 は R の誤りで検証では無視。No.2 の題名は「営業第二TのBさんのヒアリング」。No.3 は一旦「電気ガス暖」と記載。No.4 は R のとおり（通常13.557円、データでは1件だけ13,578円）。No.5・6 は R の発言者表記の誤り（それぞれBさん、Aさん）。</p>
+<hr />
+<h2>5. 一次所見（Bさんヒアリング）</h2>
+<ol>
+<li><strong>話者の対応付けが崩れた</strong>：司会が順番に指名する CI と違い、ヒアリングでは名前で呼ばれる場面が少ない。1か所の呼びかけの聞き違い（F→F）で13発言の話者を誤った。ヒアリングでは対応付けを AI に任せられない。</li>
+<li><strong>文字起こしの品質が低い</strong>：Bさんの早口の説明、社内用語・取引先名の多さで、CI より誤変換が多い。聞き取りにくい箇所を C が飛ばし、R にある項目が抜けた。</li>
+<li><strong>印なしの誤った言い換えが3件あった</strong>：C のルール違反（言っていないことを書かない）。用語を知らないまま、もっともらしい一般語に置き換えた。</li>
+<li><strong>書式</strong>：ヒアリングは「取引先/区分：内容」の見出しと画像の差し込み枠があり、CI と書式が違う。</li>
+<li><strong>良かった点</strong>：R の主要な話題（業務負荷、取引の仕組み、価格提示の流れ、部署4との役割分担、リベート、違算・入金連絡、1円の端数差、在庫提案、取引先R、取引先Q）はすべて C にもあった。</li>
+</ol></div></details><details id="verif-2" class="doc"><summary>議事録 自動作成 検証計画</summary><div class="doc-body"><ul>
+<li>版数：Ver0.1（2026/11/22）</li>
+<li>対応ファイル：<code>MinutesVerification.lean</code>（判定ロジックの形式化）</li>
+</ul>
+<hr />
+<h2>1. 目的</h2>
+<p><strong>検証する問い</strong>
+会議の音声ファイルだけを入力にして、AI（Whisper ＋ 話者分離 ＋ Claude）が人手の Word 議事録と同等以上の議事録を作れるか。</p>
+<p><strong>作れない場合に明らかにすること</strong>
+1. 妥協点：AI に任せられる範囲と、人が補う範囲の境目（例：下書きは AI、確度と話者の確認は人）
+2. 解決すべき課題：妥協点で運用するために、解決しなければならない課題と、その原因（文字起こし / 話者分離 / 議事録作成 / 文脈不足）</p>
+<p>課題と妥協点の候補は <code>docs/issue/issue_md/</code> に起票し、検証の結論として本書の末尾にまとめる。</p>
+<p><strong>判断に使う場面</strong>
+今後のヒアリングで、議事録作成に AI を使うかどうかを決める。使う場合は、人がどこを確認すればよいかも決める。</p>
+<p><strong>「同等以上」の定義</strong>
+正確性（書いてあることが発言どおりか）と網羅性（重要な発言が拾えているか）の2点で判定する。読みやすさは参考扱いとし、合否には使わない。</p>
+<hr />
+<h2>2. 対象</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>会議</td>
+<td>2026/11/20 CI（他社T生産方式と子会社YのAI意見交換）、2026/11/20 Bさんヒアリング（音声・人手版は <code>INPUT/</code>）</td>
+</tr>
+<tr>
+<td>参加者</td>
+<td>CI：C、D、G、E、A（5名）／Bさんヒアリング：I、F、H、D、A、B（6名）。所属は未記入</td>
+</tr>
+<tr>
+<td>人手版（R）</td>
+<td>Aさん作成 議事録 Ver0.1（<code>INPUT/*.docx</code>）</td>
+</tr>
+<tr>
+<td>自動版（C）</td>
+<td>Claude が文字起こしから作成する議事録（<code>minutes/</code>）</td>
+</tr>
+<tr>
+<td>文字起こし</td>
+<td>Whisper（faster-whisper）＋ pyannote 話者分離。設定は <code>transcripts/*.meta.json</code> に記録</td>
+</tr>
+<tr>
+<td>正解データ</td>
+<td>評価者が文字起こし（必要に応じて音声）から作成する。詳細は 4.1</td>
+</tr>
+<tr>
+<td>盲検の扱い</td>
+<td>Claude は C を作り終えるまで R を開かない（11/20 の2会議は R 未読のため盲検試行になる）</td>
+</tr>
+<tr>
+<td>論点・不明点</td>
+<td>比較で出た論点は <code>docs/issue/issue_md/</code> に起票する</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>3. 条件</h2>
+<h3>3.1 入力条件</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字起こし</td>
+<td>修正せずにそのまま渡す（誤変換も含めて試す）</td>
+</tr>
+<tr>
+<td>文字起こし手段</td>
+<td>使った手段と設定（Teams / Stream / Word トランスクリプトなど）を記録する</td>
+</tr>
+<tr>
+<td>付与情報（基本試行）</td>
+<td>参加者の氏名・所属のみ</td>
+</tr>
+<tr>
+<td>付与情報（追加試行・任意）</td>
+<td>用語集（MDB、HATLi、子会社X、取引先S、検収T など）と会議の目的。結果は基本試行と分けて記録する</td>
+</tr>
+</tbody>
+</table>
+<h3>3.2 公平性の制約と、分かっているバイアス</h3>
+<table>
+<thead>
+<tr>
+<th>バイアス</th>
+<th>影響</th>
+<th>対処</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude は人手版 R を既に読んでいる</td>
+<td>内容を知っているので C が有利になる</td>
+<td>本試行は「汚染あり・参考扱い」と明記する。本番の判定は、別の会議で R を見せずに行う（盲検）</td>
+</tr>
+<tr>
+<td>正解データの作成者が R か C を先に見る</td>
+<td>作成者の判断が引っ張られる</td>
+<td>正解データは両版を見る前に確定させる。できれば両版の作成者以外が作る</td>
+</tr>
+<tr>
+<td>人手版は記録者が会議の文脈を知っている</td>
+<td>取捨選択では R が有利</td>
+<td>前提として受け入れる。追加試行で目的を渡した場合との差も見る</td>
+</tr>
+</tbody>
+</table>
+<h3>3.3 自動版の作成ルール（事前に宣言しておく）</h3>
+<ol>
+<li>発言にないことは書かない。</li>
+<li>確度は語尾で書き分け、発言より強く書かない。
+   - 確認済み：「〜している」「〜である」
+   - 本人認識：「〜と認識」「〜とのこと」
+   - 伝聞：「〜と聞いている（〇〇より）」
+   - 推測：「〜と推測」「〜の可能性」</li>
+<li>誤変換で内容を推定した箇所には【推定】を付ける。聞き取れない箇所は【聞き取り不明】とし、推測で埋めない。</li>
+<li>確定に確認が必要な事項には【要確認：確認先】を付ける。</li>
+<li>記録者の注記は「※記：」として、発言とは分けて書く。</li>
+<li>決定事項・宿題は末尾にまとめて書く。</li>
+</ol>
+<hr />
+<h2>4. 確認方法</h2>
+<h3>4.1 正解データの作成</h3>
+<p>評価者は文字起こしをもとに、次の2つを作る。どちらも両版を見る前に確定させる。</p>
+<p><strong>(a) 発言セグメント一覧</strong>
+発言をひとまとまりごとに区切り、次の項目を付ける。</p>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>セグメントID</td>
+<td>連番</td>
+</tr>
+<tr>
+<td>発言者</td>
+<td>実際の発言者</td>
+</tr>
+<tr>
+<td>主張ID</td>
+<td>何についての発言か（同じ内容には同じIDを振る）</td>
+</tr>
+<tr>
+<td>確度</td>
+<td>確認済み / 本人認識 / 伝聞 / 推測</td>
+</tr>
+<tr>
+<td>誤変換フラグ</td>
+<td>文字起こしが崩れていて、内容が推定になる箇所か</td>
+</tr>
+</tbody>
+</table>
+<p><strong>(b) キーポイント一覧</strong>
+議事録に載るべき主張IDの一覧。事実、課題、決定事項、宿題を含める。</p>
+<h3>4.2 突き合わせ</h3>
+<p>R と C の各記載項目について、評価者が次の項目を付ける。</p>
+<ul>
+<li>主張ID</li>
+<li>記載上の発言者</li>
+<li>記載上の確度（語尾で判定する）</li>
+<li>根拠になる発言セグメントID（複数可。根拠がなければ空欄）</li>
+<li>【推定】などの明示があるか</li>
+</ul>
+<h3>4.3 指標</h3>
+<table>
+<thead>
+<tr>
+<th>指標</th>
+<th>定義</th>
+<th>Lean での名前</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>付け足し</td>
+<td>根拠になる発言がない記載</td>
+<td><code>isFabricated</code></td>
+</tr>
+<tr>
+<td>確度の格上げ</td>
+<td>発言より強い確度で書いた記載（例：「多分」を断定に）</td>
+<td><code>isOverclaim</code></td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td>根拠はあるが、発言者を取り違えた記載</td>
+<td><code>hasSpeakerError</code></td>
+</tr>
+<tr>
+<td>無断推定</td>
+<td>根拠が誤変換箇所だけなのに【推定】の明示がない記載</td>
+<td><code>isUnflaggedGarbled</code></td>
+</tr>
+<tr>
+<td>網羅数</td>
+<td>根拠つきで記載できたキーポイントの数</td>
+<td><code>covers</code></td>
+</tr>
+<tr>
+<td>確度の格下げ（参考）</td>
+<td>発言より弱い確度で書いた記載</td>
+<td><code>isUnderclaim</code></td>
+</tr>
+<tr>
+<td>読みやすさ（参考）</td>
+<td>5段階の主観評価。関係者2名以上で採点</td>
+<td>—</td>
+</tr>
+<tr>
+<td>作成時間（参考）</td>
+<td>議事録の作成と、人による確認にかかった時間</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3>4.4 合格基準</h3>
+<p>次の5つをすべて満たせば、C は R と同等以上と判定する。</p>
+<ol>
+<li>C の付け足しが 0 件</li>
+<li>C の確度の格上げが 0 件</li>
+<li>C の無断推定が 0 件</li>
+<li>C の話者誤りが R 以下</li>
+<li>C の網羅数が R 以上</li>
+</ol>
+<p>1〜3 は件数 0 の絶対基準、4〜5 は R との相対基準にしている。議事録で最も害が大きいのは「言っていないことが書かれる」ことなので、そこは相対評価にしない。</p>
+<p><strong>評価の扱い（2026/11/23 追記。docs/issue/issue_md/ISSUE-004・ISSUE-010）</strong>
+- 取捨選択：R は記録者が意味があると判断したものだけを書く。AI にはその判断を求めず、拾えるものはすべて拾う。R にない記載は、発言に根拠があれば誤りとしない。網羅は「R に書かれた項目を C がどれだけ含むか」で見る。
+- 正確さの基準：書式・取捨選択は R、事実の正確さは発言（文字起こし・音声）を基準とする。R の言い換え・書き直しは、意味が同じなら差分として扱わない。
+- 文体：話し言葉の崩れた語順は、意味を変えずに書き言葉に整える（主語を前、述語を後にする等）。</p>
+<h3>4.5 手順</h3>
+<ol>
+<li>音声から文字起こしを作り、手段と設定を記録する。</li>
+<li>評価者が正解データ（4.1）を作って確定させる。</li>
+<li>Claude に文字起こしと付与情報を渡し、C を作る。作成時間を記録する。</li>
+<li>評価者が R と C を突き合わせる（4.2）。</li>
+<li>指標を集計し、合格基準で判定する（4.3、4.4）。Lean の <code>verify</code> 関数でも同じ判定を確認する。</li>
+<li>差分一覧（抜け・誤り・付け足し）を作り、不合格項目の原因を分類する（文字起こしの誤り / 作成ルール違反 / 文脈不足）。</li>
+<li>汚染ありの本試行の結果を踏まえ、別の会議で盲検の本番試行を行う。</li>
+</ol>
+<hr />
+<h2>5. Lean による形式化</h2>
+<p><code>MinutesVerification.lean</code> には、4.3 の指標と 4.4 の合格基準をそのまま関数として定義している。Lean 4.15.0 で型検査済み。</p>
+<table>
+<thead>
+<tr>
+<th>定義・定理</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>evaluate</code></td>
+<td>正解データと議事録から指標を集計する</td>
+</tr>
+<tr>
+<td><code>passes</code> / <code>verify</code></td>
+<td>合格基準による判定。R と C は同じ関数で評価する</td>
+</tr>
+<tr>
+<td><code>fabrication_fails</code></td>
+<td>付け足しが1件でもあれば不合格になる（証明済み）</td>
+</tr>
+<tr>
+<td><code>overclaim_fails</code></td>
+<td>確度の格上げが1件でもあれば不合格になる（証明済み）</td>
+</tr>
+<tr>
+<td><code>coverage_shortfall_fails</code></td>
+<td>網羅数が R を下回れば不合格になる（証明済み）</td>
+</tr>
+<tr>
+<td><code>no_fabrication_of_all_supported</code></td>
+<td>全項目に根拠があれば付け足しは 0 件になる（証明済み）</td>
+</tr>
+<tr>
+<td><code>same_certainty_not_overclaim</code></td>
+<td>確度を発言どおりに書けば格上げにならない（証明済み）</td>
+</tr>
+<tr>
+<td>サンプルデータ</td>
+<td>10/30 ヒアリングの一部を使った仮データで、良い例は合格、付け足しのある例は不合格になることを確認</td>
+</tr>
+</tbody>
+</table>
+<p><strong>形式化で保証できること</strong>
+判定基準があいまいにならないこと、R と C に同じ基準が適用されること、基準どうしが矛盾しないこと。</p>
+<p><strong>形式化で保証できないこと</strong>
+正解データ（セグメントの区切り方、確度の付け方、キーポイントの選び方）が正しいかどうか。ここは人の判断で、検証結果の信頼性はその品質で決まる。</p>
+<hr />
+<h2>6. 限界</h2>
+<ul>
+<li>確度は「推測 &lt; 伝聞 &lt; 本人認識 &lt; 確認済み」の全順序に単純化している。伝聞と本人認識は本来比較しにくい。</li>
+<li>キーポイントに重要度の重みを付けていない。重要な発言の抜けも、些細な発言の抜けも同じ1件として数える。</li>
+<li>要約の良し悪し（何をまとめ、何を省くか）は網羅数でしか測れない。読みやすさは参考指標にとどめている。</li>
+<li>1会議だけの結果なので、傾向は分かっても一般化はできない。複数の会議で繰り返すことが望ましい。</li>
+</ul>
+<hr />
+<h2>7. 記録シート（テンプレート）</h2>
+<h3>7.1 試行情報</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>記入</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>試行区分</td>
+<td>本試行（汚染あり）/ 本番（盲検）</td>
+</tr>
+<tr>
+<td>会議</td>
+<td></td>
+</tr>
+<tr>
+<td>文字起こし手段・設定</td>
+<td></td>
+</tr>
+<tr>
+<td>付与情報</td>
+<td>氏名・所属のみ / ＋用語集 / ＋目的</td>
+</tr>
+<tr>
+<td>正解データ作成者</td>
+<td></td>
+</tr>
+<tr>
+<td>正解データ確定日時</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 集計結果</h3>
+<table>
+<thead>
+<tr>
+<th>指標</th>
+<th>R（人手版）</th>
+<th>C（自動版）</th>
+<th>基準</th>
+<th>判定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>付け足し</td>
+<td></td>
+<td></td>
+<td>C = 0</td>
+<td></td>
+</tr>
+<tr>
+<td>確度の格上げ</td>
+<td></td>
+<td></td>
+<td>C = 0</td>
+<td></td>
+</tr>
+<tr>
+<td>無断推定</td>
+<td></td>
+<td></td>
+<td>C = 0</td>
+<td></td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td></td>
+<td></td>
+<td>C ≤ R</td>
+<td></td>
+</tr>
+<tr>
+<td>網羅数 / キーポイント数</td>
+<td>/</td>
+<td>/</td>
+<td>C ≥ R</td>
+<td></td>
+</tr>
+<tr>
+<td>確度の格下げ（参考）</td>
+<td></td>
+<td></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>読みやすさ（参考）</td>
+<td></td>
+<td></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>作成時間（参考）</td>
+<td></td>
+<td></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>総合判定</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>7.3 差分一覧</h3>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>区分（抜け / 誤り / 付け足し）</th>
+<th>版</th>
+<th>該当箇所</th>
+<th>根拠セグメント</th>
+<th>原因（文字起こし / ルール違反 / 文脈不足）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>8. 暫定結論（2026/11/23、11/20 の2会議・基本試行）</h2>
+<p>詳細：<code>docs/verification/20261120_CI_比較.md</code>、<code>docs/verification/20261120_Bさんヒアリング_比較.md</code>、<code>docs/issue/issue_md/</code></p>
+<p><strong>問い：音声ファイルだけから、AI が Word のような議事録を作れるか</strong>
+→ <strong>現時点では作れない。ただし「下書き」としては使える水準にある。</strong></p>
+<table>
+<thead>
+<tr>
+<th>観点</th>
+<th>CI（28分・指名形式）</th>
+<th>Bさんヒアリング（63分・自由討議）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R の主要な話題を C が含むか</td>
+<td>11/11 すべて含む</td>
+<td>主要な話題はすべて含むが、細かい質疑8件が抜けた</td>
+</tr>
+<tr>
+<td>付け足し（発言にないこと）</td>
+<td>目視で0件</td>
+<td>印なしの誤った言い換え3件（ISSUE-014）</td>
+</tr>
+<tr>
+<td>話者誤り</td>
+<td>0件（2名の混同を内容から正しく振り分け）</td>
+<td>13発言（FさんをDさんと誤認、ISSUE-001）</td>
+</tr>
+<tr>
+<td>社内用語・人名</td>
+<td>誤変換多数（ISSUE-005・006）</td>
+<td>さらに多い</td>
+</tr>
+<tr>
+<td>処理時間（CPU のみ）</td>
+<td>約2時間</td>
+<td>約8時間（ISSUE-012）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>妥協点の候補</strong>
+1. AI：文字起こし、話者分離、議事録の下書き（全発言を拾う）、確認が必要な箇所の一覧化
+2. 人：話者と氏名の対応表の作成（ヒアリングでは必須）、【推定】【聞き取り不明】箇所の確認、画面共有資料の貼り付け</p>
+<p><strong>解決すべき課題（優先順）</strong>
+1. 無断推定・話者誤りをなくす（議事録の信頼性に直結）：ISSUE-014、ISSUE-001
+2. 用語集・人名簿の整備：ISSUE-005、ISSUE-006（<code>docs/design/当社の議事録作成用の用語集.xlsx</code>）
+3. 抜けをなくす自己点検の段を設ける：ISSUE-015
+4. 会議の種類ごとの書式：ISSUE-003、ISSUE-013
+5. 処理時間と実行環境：ISSUE-012、ISSUE-002</p>
+<p><strong>次の検証</strong>：用語集を確認したうえで、用語集＋話者対応表を渡す追加試行を行い、上の表がどこまで改善するかを測る。</p></div></details></section><section id="issue"><h2>Issue</h2><ul class="legend"><li><span class="st st-未着手">未着手</span> 起票しただけ</li><li><span class="st st-検討中">検討中</span> 選択肢を出して議論している</li><li><span class="st st-決定">決定</span> 方針は決まったが、対応が残っている</li><li><span class="st st-済">済</span> 対応まで終わった</li><li><span class="st st-保留">保留</span> 今は決めない</li></ul><div class="filters"><button data-filter="">すべて（20）</button><button data-filter="未着手">未着手（2）</button><button data-filter="検討中">検討中（0）</button><button data-filter="決定">決定（2）</button><button data-filter="済">済（15）</button><button data-filter="保留">保留（1）</button></div><table class="issues"><thead><tr><th>ID</th><th>題名</th><th>区分</th><th>状態</th></tr></thead><tbody><tr data-status="済"><td><a href="#issue-001">ISSUE-001</a></td><td>話者分離をどう行うか</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="決定"><td><a href="#issue-002">ISSUE-002</a></td><td>文字起こしの入力元（Whisper / Teams）</td><td>論点</td><td><span class="st st-決定">決定</span></td></tr><tr data-status="済"><td><a href="#issue-003">ISSUE-003</a></td><td>議事録の書式（見出し・発言者表記・文体）</td><td>要件</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-004">ISSUE-004</a></td><td>何を書き、何を省くか（取捨選択の基準）</td><td>要件</td><td><span class="st st-済">済</span></td></tr><tr data-status="決定"><td><a href="#issue-005">ISSUE-005</a></td><td>社内用語・略称の誤変換</td><td>誤り</td><td><span class="st st-決定">決定</span></td></tr><tr data-status="済"><td><a href="#issue-006">ISSUE-006</a></td><td>人名の誤変換</td><td>誤り</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-007">ISSUE-007</a></td><td>不確かさの印（【推定】【要確認】など）をどう扱うか</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-008">ISSUE-008</a></td><td>会議情報（日時・場所・所属・資料）の入手元</td><td>不明点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-009">ISSUE-009</a></td><td>決定事項・宿題の欄を設けるか</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-010">ISSUE-010</a></td><td>人手版（R）を正解とみなせるか</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-011">ISSUE-011</a></td><td>文字起こしの取りこぼし（長い発言が数文字に潰れる）</td><td>誤り</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-012">ISSUE-012</a></td><td>処理時間（CPU だけでは会議の数倍かかる）</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-013">ISSUE-013</a></td><td>画面共有された資料をどう議事録に入れるか</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-014">ISSUE-014</a></td><td>Claude が印を付けずに誤った語に言い換えた（無断推定）</td><td>誤り</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-015">ISSUE-015</a></td><td>聞き取りにくい箇所・短い発言の拾い漏れ</td><td>誤り</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-016">ISSUE-016</a></td><td>Bさんヒアリングの人手版（R）で確認したい箇所</td><td>不明点</td><td><span class="st st-済">済</span></td></tr><tr data-status="済"><td><a href="#issue-017">ISSUE-017</a></td><td>議事録作成（Claude）をどこで動かすか</td><td>論点</td><td><span class="st st-済">済</span></td></tr><tr data-status="未着手"><td><a href="#issue-018">ISSUE-018</a></td><td>処理の高速化</td><td>論点</td><td><span class="st st-未着手">未着手</span></td></tr><tr data-status="保留"><td><a href="#issue-019">ISSUE-019</a></td><td>ノイズの多い音声・テキストへの対応</td><td>論点</td><td><span class="st st-保留">保留</span></td></tr><tr data-status="未着手"><td><a href="#issue-020">ISSUE-020</a></td><td>議事録作成（④）を Claude 以外で代替できるか</td><td>論点</td><td><span class="st st-未着手">未着手</span></td></tr></tbody></table><h3>Issue の内容</h3><details id="issue-001" class="doc"><summary>ISSUE-001　話者分離をどう行うか（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/22</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI、11/20 Bさんヒアリング</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>検証計画 4.3「話者誤り」、ISSUE-002</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>Whisper の文字起こしには発言者が付かない。発言者が分からないと、議事録に「誰が言ったか」を書けず、検証計画の指標「話者誤り」も評価できない。</p>
+<h2>根拠</h2>
+<ul>
+<li>faster-whisper の出力はテキストとタイムスタンプだけ。</li>
+<li>議事録では「〇〇さんの認識」「〇〇さんより」のように、発言者で確度を書き分ける（検証計画 3.3）。</li>
+</ul>
+<h3>11/20 CI での結果（2026/11/23 追記）</h3>
+<ul>
+<li>pyannote 3.1（参加者数5を指定）で話者記号を付けた。CPU で約80分（文字起こしと並行実行）。</li>
+<li>対応付けは、司会が「〇〇さんお願いします」と指名した直後の話者から Claude が推定した。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>記号</th>
+<th>推定</th>
+<th>結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPEAKER_01</td>
+<td>Cさん</td>
+<td>R と一致</td>
+</tr>
+<tr>
+<td>SPEAKER_02</td>
+<td>Aさん</td>
+<td>R と一致</td>
+</tr>
+<tr>
+<td>SPEAKER_04</td>
+<td>Dさん</td>
+<td>R と一致</td>
+</tr>
+<tr>
+<td>SPEAKER_03</td>
+<td>Eさん＋Gさん</td>
+<td><strong>2名が1人と判定された</strong>。Claude が発言内容から振り分け、結果は R と一致</td>
+</tr>
+<tr>
+<td>SPEAKER_00</td>
+<td>—</td>
+<td>合計8秒の雑音程度</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>1行の中に別の人の相づち・短い発言が混ざる箇所がある（例：06:14 前後）。</li>
+<li>分かったこと：チェックインのように司会が順に指名する会議なら、氏名の対応付けは Claude が十分できる。ヒアリングのように自由に話す会議でどうなるかは、Bさんヒアリングで確認する。</li>
+</ul>
+<h3>11/20 Bさんヒアリングでの結果（2026/11/23 追記）</h3>
+<ul>
+<li>pyannote 3.1（参加者数6を指定）。CPU で約5.9時間（スリープ時間を除く）。</li>
+<li>ヒアリングは司会が順に指名しないので、名前で呼ばれた箇所から推定するしかなかった。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>記号</th>
+<th>推定</th>
+<th>R での実際</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPEAKER_05</td>
+<td>Bさん</td>
+<td>一致</td>
+</tr>
+<tr>
+<td>SPEAKER_02</td>
+<td>Aさん【推定】</td>
+<td>一致</td>
+</tr>
+<tr>
+<td>SPEAKER_01</td>
+<td>Hさん【推定】</td>
+<td>一致</td>
+</tr>
+<tr>
+<td>SPEAKER_04</td>
+<td>司会（IさんかFさん）</td>
+<td>Iさん</td>
+</tr>
+<tr>
+<td>SPEAKER_03</td>
+<td>Dさん【推定】</td>
+<td><strong>Fさん（13発言で話者誤り）</strong></td>
+</tr>
+<tr>
+<td>SPEAKER_00</td>
+<td>不明</td>
+<td>不明（R にDさんの発言はない）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>誤りの原因：54:11「Fさんは大丈夫ですか」を「Dさん」と推定したが、「Fさん」だったと思われる。1か所の聞き違いで1人分の発言がすべて誤った。</li>
+<li>分かったこと：<strong>ヒアリング形式では、話者記号と氏名の対応付けを AI だけでは決められない。</strong> 人が冒頭の数分を聞いて対応表を作るか、声の登録（話者照合）が必要。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>pyannote で話者分離し、Whisper の結果と時刻で突き合わせる</td>
+<td>精度が高い。ローカルで動き、音声を外に出さない</td>
+<td>Hugging Face のトークンと利用規約への同意が必要。CPU では時間がかかる。出力は SPEAKER_00 などの記号で、氏名との対応は人か Claude が付ける</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Teams の文字起こし（話者付き）を使う</td>
+<td>話者名が最初から付いている</td>
+<td>録音しかない会議には使えない（ISSUE-002）</td>
+</tr>
+<tr>
+<td>C</td>
+<td>話者なしで Claude に文脈から推定させる</td>
+<td>追加ツールが不要</td>
+<td>推定を誤ると話者誤りになる。検証の公平性が下がる</td>
+</tr>
+</tbody>
+</table>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>A の場合：文字起こし → 話者分離 → 突き合わせ → 話者記号を氏名に置き換え、の4段構成になる。</li>
+<li>「SPEAKER_00 = Bさん」の対応付けを誰がどうやるか（人が冒頭を聞いて指定する / Claude が自己紹介などから推定する）を決める必要がある。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/22 Aさん：今の PC で動くなら A（pyannote）を試す。対応付けの方法は未定。</p>
+<p>2026/11/23 Aさん：話者対応表は設定ファイルに置き、あればそれを読み込む。なければ議事録作成の前に AI が読む（推定する）運用にする。
+- 対応：会議情報ファイル <code>INPUT/&lt;名前&gt;.会議情報.txt</code> の <code>[話者対応表]</code> 欄（<code>SPEAKER_00: 氏名</code>）を作成（<code>src/meeting_info.py</code>）。記入があればそれを使い、空欄なら Claude が <code>src/speaker_samples.py</code> の発言例から推定して「（AI推定）」付きで書き込み、該当の発言に【推定】を付ける。議事録作成スキル手順2に反映。</p></div></details><details id="issue-002" class="doc"><summary>ISSUE-002　文字起こしの入力元（Whisper / Teams）（決定）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>決定</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/22</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>全般</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-001、検証計画 1章・3.1</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>検証計画は「Teams などの文字起こし」を入力に想定しているが、今回は録音（m4a）を Whisper で文字起こししている。作るソフトがどちらを入力にするかで、構成が変わる。</p>
+<h2>根拠</h2>
+<ul>
+<li>検証計画 1章「Teams などの文字起こしテキストを入力にして」</li>
+<li>INPUT にあるのは m4a の録音のみ</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>録音 → Whisper ＋ pyannote</td>
+<td>対面会議・録音だけの会議にも使える</td>
+<td>処理時間がかかる。話者名の対応付けが要る</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Teams の文字起こしファイル（.vtt / .docx）</td>
+<td>話者名付き。処理が軽い</td>
+<td>Teams 会議でしか使えない。文字起こしを有効にし忘れると使えない</td>
+</tr>
+<tr>
+<td>C</td>
+<td>両方を受け付け、共通の形式に変換してから議事録を作る</td>
+<td>用途が広い</td>
+<td>作る量が増える</td>
+</tr>
+</tbody>
+</table>
+<h2>ソフトへの影響</h2>
+<p>入力部分の設計が変わる。議事録作成部分は「話者付き・タイムスタンプ付きのテキスト」という共通形式にしておけば、どの案でも使い回せる。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：入力は次の3通りすべてに対応する。
+1. 音声ファイルのみ（Whisper ＋ pyannote）
+2. テキストのみ（Teams・Notion などの文字起こし）
+3. テキスト＋音声：Teams・Notion の文字起こしに加えて音声も入力し、両方を突き合わせて議事録の精度を上げる
+- 残りの対応：入力形式ごとの読み込みと、テキストと音声の突き合わせ（時刻・話者の照合）の実装。</p></div></details><details id="issue-003" class="doc"><summary>ISSUE-003　議事録の書式（見出し・発言者表記・文体）（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>要件</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>docs/verification/20261120_CI_比較.md 要件 R2〜R5、ISSUE-007</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>人手版（R）には決まった書式があるが、自動版（C）は独自の書式で作ったため、見た目も読み方も大きく異なる。ソフトで再現するには、書式を明文化する必要がある。</p>
+<h2>根拠</h2>
+<p>R から読み取れる書式：
+- 参加者は敬称略、所属付き、記録者に「(記)」：「当社：C、D、G、E、A(記)」
+- 【会議内容】の下を「〇〇さんの会議/議題名」で区切る：「Cさんの会議/Praの予算申請」
+- 発言は1段落にまとめ、末尾に（発言者・敬称略）：「…学びたいところは学びたい。(C)」
+- 発言者の一人称・口調を残す：「Nさんと私に落ちてきた」
+- 質問は疑問文で書き、回答と交互に並べる：「Auth認証エラーはPythonでやっているのか。(A)」</p>
+<ul>
+<li>話し言葉の崩れた語順は、意味を変えずに書き言葉に整える（主語を前、述語を後にする等）。（2026/11/23 Aさん、ISSUE-010 より）</li>
+</ul>
+<p>C は人ごとに「予定・タスク・質疑」で区切り、行頭に「Cさん：」、三人称の伝聞体で書いた。</p>
+<h3>Bさんヒアリングで分かったこと（2026/11/23 追記）</h3>
+<p>ヒアリングの R は CI と書式が違う。
+- 見出し：「取引先/区分：内容」（例：「取引先P/課題：現場配送品で請求金額が丸め誤差で1円ズレる」）。区分は 確認・課題・懸念・活動・コメント。
+- 画面共有された資料の位置に「[マニュアル]」などの画像の差し込み枠を置く（ISSUE-013）。
+- 参加者は組織・グループを階層で書く（ISSUE-008）。
+- 取引先・社内用語はカタカナ・略称に統一する（取引先P、取引先R、取引先S、当社グループ）。
+→ 案 B（会議の種類ごとにテンプレート）が必要。</p>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>R の書式を仕様として固定し、Word テンプレートで出力する</td>
+<td>今の議事録と同じ見た目になり、受け取る側が戸惑わない</td>
+<td>会議の種類（CI / ヒアリング）で書式が違う可能性がある</td>
+</tr>
+<tr>
+<td>B</td>
+<td>会議の種類ごとに書式テンプレートを持つ</td>
+<td>会議ごとに最適化できる</td>
+<td>テンプレートの管理が増える</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：まず A。Bさんヒアリングの R と比べて書式が違えば B に広げる。</p>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>「〇〇さんの会議/議題名」の「会議」は、その人のチェックインの持ち時間という意味か。</li>
+<li>一人称を残すのは意図的か（発言の生の言い回しを残したい、など）。</li>
+<li>出力は Word（.docx）が必須か。Markdown や Teams への投稿でもよいか。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>議事録作成プロンプトに書式の仕様と見本を入れる。</li>
+<li>出力部分で Word テンプレート（会議情報の表＋本文）に流し込む処理が必要。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：AI が作った議事録も、最後は人手版と同じ Word 形式で出力する（Aさんが AI の出力を確認するため）。
+- 対応：<code>src/make_docx.py</code> を作成。人手版の Word をテンプレートとして複製し、冒頭の表・見出し（太字・下線、リスト1段目）・本文（リスト2段目）の書式を引き継ぐ。入力は人手版の書式に組み替えた md（<code>minutes/&lt;名前&gt;/*_議事録.md</code>）。CI とBさんヒアリングの2件を出力済み（<code>minutes/&lt;名前&gt;/*_議事録.docx</code>）。
+- 書式のうち、CI は「〇〇さんの会議/議題」、ヒアリングは「取引先/区分：内容」の見出しにした（案 B）。テンプレートの切り替え方法は未決定。</p>
+<p>2026/11/23 対応（Claude）：見出しの付け方（会議の種類の見分け方、見出しの形、区切り方、ヒアリングの区分の使い分け）を、人手版2会議から読み取った規則として docs/design/議事録作成ツール設計書.md 5.5 に明記した。見出しは Claude の判断に依存し、作るたびに区切りが変わる可能性がある点は未解決。</p>
+<p>2026/11/23 Aさん：参考に提示した書式を固定した仕様として読み込む。議事録作成スキルに反映する。
+- 対応：人手版2会議の書式を固定仕様 <code>.claude/skills/minutes/references/format-spec.md</code> にまとめ、人手版の Word をテンプレートとして <code>.claude/skills/minutes/assets/</code>（template_checkin.docx / template_hearing.docx）に固定。<code>src/make_docx.py --type &lt;会議の種類&gt;</code> で切り替える（案 B）。会議の種類は会議情報ファイルで記録者が指定する。</p></div></details><details id="issue-004" class="doc"><summary>ISSUE-004　何を書き、何を省くか（取捨選択の基準）（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>要件</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>docs/verification/20261120_CI_比較.md 要件 R6、検証計画 4.3「網羅数」・6章</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>R は業務上の論点に絞って約2,000字、C はほぼ全発言を書いて約5,500字になった。R に書かれた議題はすべて C にもあるが、R が省いたものも C には書かれている。何を省くかの基準が分からないと、ソフトは R の分量に近づけない。</p>
+<h2>根拠</h2>
+<p>R が省いていて C には書いてあるもの：
+- 記録者（Aさん）自身のチェックイン（予定・タスク・質疑の全体）
+- Eさんの KR 修正についてのCさんとのやり取り（19:00〜20:35）
+- Eさんからの研修（情報セキュリティ・経理教育）の連絡
+- Eさんの商品マスター支援の申し出、取引先Sの体制の話
+- Dさんの体調の確認、終了後の雑談
+- Cさん「当社がやっても全然刺さらないですよ」のような補足の言い回し</p>
+<p>R の題名は「他社T生産方式と子会社YのAI意見交換」で、Cさんの2議題に焦点を当てている。</p>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>省く基準を明文化してプロンプトに入れる（例：記録者自身の報告、雑談、体調、研修連絡は省く）</td>
+<td>再現性がある</td>
+<td>基準を言葉にしきれない可能性がある</td>
+</tr>
+<tr>
+<td>B</td>
+<td>過去の R を見本として複数渡し、取捨選択を真似させる</td>
+<td>言葉にしにくい感覚も伝わる</td>
+<td>見本の会議に引っ張られる。盲検の検証には使えない</td>
+</tr>
+<tr>
+<td>C</td>
+<td>AI は全部書いた「詳細版」を作り、人が削る</td>
+<td>抜けが起きない</td>
+<td>人の作業が残る。今と比べて楽になるか不明</td>
+</tr>
+<tr>
+<td>D</td>
+<td>詳細版と要約版の2つを作る</td>
+<td>用途で使い分けられる</td>
+<td>どちらが正式な議事録か決める必要がある</td>
+</tr>
+</tbody>
+</table>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>Aさん自身のチェックインを書かないのは、記録者だからか、それとも内容が議事録に載せるほどでないからか。</li>
+<li>KR 修正のやり取りや研修の連絡は、「書かなくてよい」のか「書き忘れ」なのか。</li>
+<li>この議事録は誰が何のために読むか（例：上長への報告、後日の振り返り）。読み手によって省く基準が変わる。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>取捨選択のルール（または見本）がプロンプトの中心になる。</li>
+<li>検証計画の「網羅数」は、R が意図的に省いたものをキーポイントに入れるかどうかで結果が変わる。キーポイントの選び方もこの基準に合わせる必要がある。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：
+- CI などの R は、意味があると思われるものだけを書いている。AI にはその判断はできないので、<strong>AI は拾えるものをすべて拾う</strong>（案 C に近い）。完全ではなくてよい。
+- R と重なる部分は、R を正解として見直す。R にない記載は、発言に根拠があれば誤りとはしない。
+- Word（R）は、Aさんが会議内容を正しく理解するためのもの（読み手＝Aさん本人）。
+- 対応：検証計画 4.4 に評価の扱いを追記した。</p></div></details><details id="issue-005" class="doc"><summary>ISSUE-005　社内用語・略称の誤変換（決定）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>誤り</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>決定</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>docs/verification/20261120_CI_比較.md 要件 R7・誤り No.1〜3, 6〜9、ISSUE-006</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>Whisper が社内用語・略称を一般語に誤変換し、Claude もそれを正しい語に直せなかった。【推定】で直そうとした箇所も外れた（「捨て込み」→「審査」と推定したが、正しくは「ステコミ」）。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>文字起こし</th>
+<th>正しい語（R）</th>
+<th>C の扱い</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>捨て込み</td>
+<td>ステコミ</td>
+<td>審査【推定】（外れ）</td>
+</tr>
+<tr>
+<td>家電リスト</td>
+<td>架電リスト</td>
+<td>そのまま（無断の誤り）</td>
+</tr>
+<tr>
+<td>ETM</td>
+<td>BTM</td>
+<td>【聞き取り不明】</td>
+</tr>
+<tr>
+<td>プラグマティクス / プラノ / ブランド</td>
+<td>Pra</td>
+<td>そのまま・【要確認】</td>
+</tr>
+<tr>
+<td>リハ</td>
+<td>TGRV</td>
+<td>【聞き取り不明】</td>
+</tr>
+<tr>
+<td>BX</td>
+<td>BXG</td>
+<td>【聞き取り不明】</td>
+</tr>
+<tr>
+<td>NG / 原曲側</td>
+<td>エネ事</td>
+<td>原局側【推定】（外れ）</td>
+</tr>
+<tr>
+<td>東京バスグループ / カンパニー</td>
+<td>CP（カンパニー）</td>
+<td>当社【推定】</td>
+</tr>
+<tr>
+<td>節素流 / 脱身入れ物流</td>
+<td>部署9 / 脱みらい物流</td>
+<td>【聞き取り不明】</td>
+</tr>
+<tr>
+<td>ティジリア</td>
+<td>子会社X</td>
+<td>子会社X【推定】（※検証計画の用語例を見ていたため推定できた）</td>
+</tr>
+<tr>
+<td>ノベル / ネットハブ</td>
+<td>Novel / Github</td>
+<td>ノベル / GitHub【推定】</td>
+</tr>
+<tr>
+<td>Gチーム</td>
+<td>GTL</td>
+<td>Gチーム</td>
+</tr>
+</tbody>
+</table>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>用語集を作り、Claude に渡して変換させる</td>
+<td>実装が簡単。誤変換の型（「捨て込み」→ステコミ）も登録できる</td>
+<td>用語集の作成・更新が必要</td>
+</tr>
+<tr>
+<td>B</td>
+<td>用語集を Whisper にも渡す（initial_prompt / hotwords）</td>
+<td>文字起こしの段階で正しくなる</td>
+<td>効果に限界がある。入れすぎると幻覚が増える</td>
+</tr>
+<tr>
+<td>C</td>
+<td>A＋B</td>
+<td>両段階で直る</td>
+<td>手間は A と同じ</td>
+</tr>
+<tr>
+<td>D</td>
+<td>過去の議事録（R）から用語を自動抽出して用語集を育てる</td>
+<td>用語集の作成が楽になる</td>
+<td>過去の R の誤記も拾う</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：C。用語集の初版は、今回の表と過去の議事録から作る。</p>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>既存の用語集・略称一覧はあるか。</li>
+<li>議事録では略称（Pra、ステコミ）で書くのが決まりか。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>用語集ファイル（正式表記・読み・よくある誤変換）を持つ。</li>
+<li>文字起こし時に Whisper へ、議事録作成時に Claude へ渡す。</li>
+<li>用語集にない不明語は【要確認】で一覧化し、人がまとめて確認できるようにする。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：既存の用語集はない。必要なら、文字起こしと R を突合して用語一覧を作り、Aさんが確認する。
+- 対応中：CI 分の用語一覧の案を <code>docs/design/当社の議事録作成用の用語集.xlsx</code> に作成（Aさんの確認待ち）。Bさんヒアリング分は、自動版を作った後に追加する。
+- 2026/11/23 Aさん：用語集のファイル名を <code>docs/design/当社の議事録作成用の用語集.xlsx</code> に変更し、CI 分の用語を確認・修正済み（「内容確認日」列を追加）。出典はファイル名で書くこと。→ Claude がBさんヒアリング分を統合し、出典をファイル名に置き換えた。Bさんヒアリング分は確認待ち。
+- 2026/11/23 Aさん：用語集（用語74件・人名27件）をすべて確認済みにした。→ 方針は案 C（Claude と Whisper の両方に渡す）。残りの対応：追加試行で用語集を使い、効果を測る。
+- 2026/11/23 Aさん：用語集への追加が発生した時の候補・通知の処理がない。→ ⑦「用語集の追加候補」を追加（<code>src/glossary_tool.py candidates</code>）。議事録の【推定】【聞き取り不明】と文字起こしの頻出未登録語を、用語集の「候補」シートに未確認で追記し、Claude が件数と主な語を記録者に知らせる。記録者の確認後に「用語」「人名」へ反映する。</p></div></details><details id="issue-006" class="doc"><summary>ISSUE-006　人名の誤変換（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>誤り</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>docs/verification/20261120_CI_比較.md 要件 R8・誤り No.4〜5、ISSUE-005</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>参加者以外の人名（会話に出てくる関係者）が誤変換され、Claude は気づけなかった。人名は誤っていても文として自然なので、【推定】も付かない。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>文字起こし</th>
+<th>正しい名前（R）</th>
+<th>C の扱い</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lさん</td>
+<td>Lさん</td>
+<td>Lさん（無断の誤り）</td>
+</tr>
+<tr>
+<td>二等差（のツール）</td>
+<td>Gさん（のツール）</td>
+<td>【聞き取り不明】</td>
+</tr>
+<tr>
+<td>Aさん</td>
+<td>Aさん（参加者）</td>
+<td>参加者名簿から補正できた</td>
+</tr>
+<tr>
+<td>Sチームリーダー</td>
+<td>R は「オーダーみらいで」</td>
+<td>どちらが正しいか未確定（ISSUE-010）</td>
+</tr>
+</tbody>
+</table>
+<p>参加者の名前は名簿を渡していたので補正できた。参加者以外の関係者（Lさん、Kさん、Nさん、Qさんなど）は名簿がない。</p>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>関係者名簿（部署内・よく出る人）を用語集と一緒に渡す</td>
+<td>誤変換を直せる</td>
+<td>名簿の管理が必要。個人情報の扱いに注意</td>
+</tr>
+<tr>
+<td>B</td>
+<td>人名らしき語をすべて【要確認】として一覧に出す</td>
+<td>名簿がなくても人が確認しやすい</td>
+<td>確認の手間が残る</td>
+</tr>
+<tr>
+<td>C</td>
+<td>A＋B（名簿にない人名だけ一覧に出す）</td>
+<td>確認対象を絞れる</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：C。</p>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>用語集（ISSUE-005）に人名の欄を設ける。</li>
+<li>議事録の末尾か別ファイルに「確認が必要な人名・用語」の一覧を出す。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：案 C。名簿を確認し、分からなければマーキングして、人が最後に修正する。
+- 対応：作成ルール12として <code>.claude/skills/minutes/references/writing-rules.md</code> に追加。会話に出る人名は用語集の「人名」シート（名簿）で確認し、名簿にない・表記が確かでない人名は <code>氏名【要確認：人名】</code> として残す。⑦で【推定】【聞き取り不明】の人名は用語集の候補にも上がる。</p></div></details><details id="issue-007" class="doc"><summary>ISSUE-007　不確かさの印（【推定】【要確認】など）をどう扱うか（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>検証計画 3.3（作成ルール）、docs/verification/20261120_CI_比較.md 要件 R9、ISSUE-003</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>検証計画 3.3 のルールに従い、C には【推定】【聞き取り不明】【要確認】を36か所付けた。言っていないことを書かないためには必要だが、R には印が一つもなく、このままでは配布できる議事録にならない。</p>
+<h2>根拠</h2>
+<ul>
+<li>C：36か所（例：「PoC【推定：文字起こしは「ポック」】」）</li>
+<li>R：0か所。不確かな箇所も断定で書いている。R にも誤記・解釈の揺れがある（ISSUE-010）。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>確認用（印あり）と配布用（印なし）の2版を出す。人が確認用で直してから配布用を作る</td>
+<td>安全性と読みやすさを両立できる</td>
+<td>確認が終わる前に配布用が出回るおそれ</td>
+</tr>
+<tr>
+<td>B</td>
+<td>印は本文に入れず、末尾の「確認事項リスト」にまとめる</td>
+<td>本文が読みやすい</td>
+<td>本文のどこが不確かか分かりにくい</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Word のコメント機能で印を付ける</td>
+<td>見慣れた操作で確認・解決できる</td>
+<td>Word 出力が前提になる</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：C か B。用語集（ISSUE-005）で印の数自体を減らすのが先。</p>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>出力形式（Word コメント / 確認リスト）が決まる。</li>
+<li>「人の確認が終わったか」を管理する仕組みが必要になる可能性がある。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/23 暫定対応（Claude）：Word 出力では、【推定】【聞き取り不明】【要確認】を本文に残し、黄色の蛍光ペンで示した（<code>src/make_docx.py</code>）。正式な方式（コメント / 確認リスト）は未決定。</p>
+<p>2026/11/23 Aさん：黄色の蛍光ペンでよい。
+- 対応：<code>src/make_docx.py</code> で実装済み。</p></div></details><details id="issue-008" class="doc"><summary>ISSUE-008　会議情報（日時・場所・所属・資料）の入手元（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>不明点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>全般</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>docs/verification/20261120_CI_比較.md 要件 R1〜R2</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>R の冒頭表にある会議名・日時（曜日・時刻）・場所・所属・資料は、音声からは分からない。C ではこの欄が埋まらなかった。</p>
+<h2>根拠</h2>
+<ul>
+<li>R：「2026/11/20(金) 16:30-17:00」「当社：C、…、A(記)」。場所・資料は空欄。</li>
+<li>音声ファイルから分かるのは録音日（ファイル名）と長さのみ。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>実行時に人が入力する（会議名・日時・参加者・所属）</td>
+<td>確実</td>
+<td>毎回の手間</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Outlook / Teams の予定表から取得する</td>
+<td>自動化できる</td>
+<td>予定表へのアクセス権限・連携の実装が必要</td>
+</tr>
+<tr>
+<td>C</td>
+<td>参加者・所属の名簿を持ち、氏名だけ入力すれば所属が付くようにする</td>
+<td>手間が減る</td>
+<td>名簿の管理（ISSUE-006 と共通）</td>
+</tr>
+</tbody>
+</table>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>会議名は誰がどう付けているか（CI の R は「CI(子会社Yと他社T生産方式)」と議題名を付けている）。</li>
+<li>予定表との連携は、社内ルール上できるか。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<p>入力画面（または設定ファイル）に会議情報の欄が必要。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：議事録を作成する前に人が入力する（案 A）。参加者の設定ファイルを読む時に、会議名の欄から会議名を読めるようにする。会議名はAさんが考えるので、ルールはない。予定表との連携はやめる。
+- 対応：会議情報ファイル <code>INPUT/&lt;名前&gt;.会議情報.txt</code>（会議名・日時・場所・会議の種類・記録者・参加者・資料・話者対応表）を作成。ひな形は <code>src/meeting_info.py init</code> で作り、日付と曜日はファイル名から自動で入れる。所属は用語集の「人名」シートから取る。</p></div></details><details id="issue-009" class="doc"><summary>ISSUE-009　決定事項・宿題の欄を設けるか（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>検証計画 3.3 ルール6、docs/verification/20261120_CI_比較.md 要件 R10</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>検証計画 3.3 のルールに従い、C は末尾に決定事項2件・宿題5件をまとめたが、R にはこの欄がない。R の書式に合わせるなら不要、議事録の使い勝手を上げるなら有用で、方針を決める必要がある。</p>
+<h2>根拠</h2>
+<ul>
+<li>R：「確認する。(D)」「一緒にセキュリティ審査を出したい。(C)」のように本文中に書くだけ。</li>
+<li>C：決定事項「Dさんのセキュリティ審査はプラノ分と一緒に提出」、宿題「セキュリティ審査の内容を作成し共有（Dさん）」など。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>R に合わせて設けない</td>
+<td>今の議事録と同じ</td>
+<td>宿題の追跡がしにくい</td>
+</tr>
+<tr>
+<td>B</td>
+<td>末尾に設ける</td>
+<td>宿題が一目で分かる。AI の得意な作業</td>
+<td>今の議事録から変わる。CI のような短い会議では過剰かもしれない</td>
+</tr>
+<tr>
+<td>C</td>
+<td>会議の種類で切り替える（ヒアリングは設ける、CI は設けない など）</td>
+<td>柔軟</td>
+<td>設定が増える</td>
+</tr>
+</tbody>
+</table>
+<h2>ソフトへの影響</h2>
+<p>出力テンプレートの末尾の構成が変わる。宿題を Planner / タスク管理に連携する拡張の余地もある。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：議事録の一番上に【決定事項】、その下に【TODO】を書き、それぞれの下に項目を並べる。
+- 対応：<code>src/make_docx.py</code> と md の書式（docs/design/議事録作成ツール設計書.md 4.4）に反映。CI・Bさんヒアリングの議事録に反映済み。</p></div></details><details id="issue-010" class="doc"><summary>ISSUE-010　人手版（R）を正解とみなせるか（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>検証計画 4.1（正解データ）・4.4（合格基準）、docs/verification/20261120_CI_比較.md 3章</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>R と C で解釈が分かれた箇所があり、文字起こしを見ると C の方が発言に近いものもある。R にも誤記がある。R をそのまま正解とすると、C が正しく書いた箇所を誤りと数えてしまう。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>箇所</th>
+<th>R</th>
+<th>C</th>
+<th>文字起こし</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dさんの返答</td>
+<td>「確認する。」</td>
+<td>「一旦これで大丈夫。」</td>
+<td>「はい、一旦これで大丈夫です。」</td>
+</tr>
+<tr>
+<td>Kさん</td>
+<td>「依頼がKさんに来ている」</td>
+<td>「Kさん（マネージャー）から回ってきた」</td>
+<td>「これKさんからマネージャーから回ってくるんですけど」</td>
+</tr>
+<tr>
+<td>経理のTL</td>
+<td>「オーダーみらいで、企画部で経理のTLになる」</td>
+<td>「Sチームリーダー」</td>
+<td>「Sチームリーダーご相談 これが企画部の経理のチームリーダーになります」</td>
+</tr>
+<tr>
+<td>発言者</td>
+<td>「(E)」×2</td>
+<td>Eさん</td>
+<td>—（R の誤記と思われる）</td>
+</tr>
+</tbody>
+</table>
+<p>※文字起こし自体にも誤りがあるため、最終的には音声で確認する必要がある。</p>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>検証計画どおり、R とは別に正解データ（発言セグメント一覧・キーポイント一覧）を作る</td>
+<td>公平。R と C を同じ基準で評価できる</td>
+<td>作成に時間がかかる（28分の会議で数時間）</td>
+</tr>
+<tr>
+<td>B</td>
+<td>R を正解とし、分かれた箇所だけ音声で確認して R を直す</td>
+<td>手間が少ない</td>
+<td>R の取捨選択に評価が引っ張られる</td>
+</tr>
+<tr>
+<td>C</td>
+<td>書式・取捨選択は R を正解、事実の正確さは音声を正解とする、と分けて評価する</td>
+<td>要件（書式）と正確さを分けて見られる</td>
+<td>評価の手順が2つになる</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：C。今回の目的（Word のような議事録を作れるか）では、書式・取捨選択は R が基準、事実関係は音声が基準になる。</p>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>上の4か所は、音声を聞き直すとどちらが正しいか。</li>
+<li>正解データ（検証計画 4.1）を作る時間はとれるか。とれない場合は C の簡易評価にするか。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<p>直接の影響はないが、検証の合否判定（同等以上か）の信頼性に関わる。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：
+- 「Dさんの返答」「経理のTL」：R は議事録として書き直したもの。AI 版（文字起こしどおり）の修正は不要。
+- 「Kさん」：文字起こしは合っている。ただし、元の発言の日本語がおかしい場合は、R のように適切な語法（主語を前、述語を後にする等）に直して書くのがよい。→ ISSUE-003 の要件に追加。
+- 「(E)」：R の誤記。
+- 評価の方針：書式・取捨選択は R を基準、事実の正確さは発言（文字起こし・音声）を基準とする（案 C）。R の言い換え・書き直しは、意味が同じなら差分として扱わない。
+- 対応：ISSUE-003 に文体の要件を追記、比較資料 3章に結論を追記した。</p></div></details><details id="issue-011" class="doc"><summary>ISSUE-011　文字起こしの取りこぼし（長い発言が数文字に潰れる）（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>誤り</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>src/fill_gaps.py、ISSUE-001</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>Whisper（faster-whisper large-v3-turbo）が、Dさんのチェックイン（約70秒）を「承知です。」の5文字だけに潰していた。このままだと、Dさんの報告が議事録から丸ごと消える。</p>
+<h2>根拠</h2>
+<ul>
+<li>21:22〜22:34 の72秒が1セグメント「承知です。」になっていた。pyannote はこの区間をDさん（SPEAKER_04）の発話として検出していた。</li>
+<li>同じ区間を VAD なしで単独に文字起こしし直すと、「マスター登録ツールを引き続き作ろうと思います…セキュリティ審査をちょっと出そうと思ってます」と正しく出た。</li>
+<li>CI 全体で同じ型（10秒以上で1.5字/秒未満）が7か所あり、うち会議中のもの4か所。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>異常に文字が少ないセグメントを検出し、pyannote の発話区間だけ再文字起こしする（実装済み：<code>src/fill_gaps.py</code>）</td>
+<td>必要な箇所だけ直せる。処理は数分</td>
+<td>閾値（10秒・1.5字/秒）が会議によって合わないかもしれない</td>
+</tr>
+<tr>
+<td>B</td>
+<td>全体を VAD なしで文字起こしする</td>
+<td>単純</td>
+<td>無音部分で幻覚が増える。処理時間が倍</td>
+</tr>
+<tr>
+<td>C</td>
+<td>別のモデル（large-v3、kotoba-whisper など）を試す</td>
+<td>根本的に改善する可能性がある</td>
+<td>CPU では処理時間が長い</td>
+</tr>
+</tbody>
+</table>
+<h2>ソフトへの影響</h2>
+<ul>
+<li>文字起こしの後に「品質チェック＋再処理」の段を入れる（A）。</li>
+<li>処理後も、文字数の少ない区間は人の確認リストに出すとよい。</li>
+</ul>
+<h2>決定内容</h2>
+<p>2026/11/23 Claude：A を実装し、CI に適用してDさんの報告を復元した（30セグメント追加）。正式採用はAさんの判断待ち。</p>
+<p>2026/11/23 Aさん：人手版で消している内容は、Aさんが消したもの。AI で出力する場合は変に消さずに処理する。
+- 対応：抜けの補完（<code>src/fill_gaps.py</code>）を正式採用。議事録作成ルールに「拾えるものはすべて拾う」を明記（docs/design/議事録作成ツール設計書.md 4.4）。</p></div></details><details id="issue-012" class="doc"><summary>ISSUE-012　処理時間（CPU だけでは会議の数倍かかる）（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 CI、11/20 Bさんヒアリング</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-001、ISSUE-002、ISSUE-011</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>今の PC（GPU なし、CPU 8スレッド）では、文字起こしと話者分離に会議時間の数倍かかる。1時間の会議だと、議事録の下書きが出るまでに半日近くかかる可能性がある。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>工程</th>
+<th>CI（音声 28分）</th>
+<th>Bさんヒアリング（音声 63分）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文字起こし（Whisper）</td>
+<td>40分（音声の1.4倍）</td>
+<td>101分（1.6倍）</td>
+</tr>
+<tr>
+<td>話者分離（pyannote）</td>
+<td>80分（2.8倍）</td>
+<td>約5.9時間（5.6倍。スリープで止まっていた約7.5時間を除く）</td>
+</tr>
+<tr>
+<td>抜けの補完</td>
+<td>数分</td>
+<td>数分</td>
+</tr>
+<tr>
+<td>議事録案の作成（Claude）</td>
+<td>約15〜20分（話者の対応付け・抜けの調査を含む）</td>
+<td>約15分（話者の対応付けを含む）</td>
+</tr>
+</tbody>
+</table>
+<p>※文字起こしと話者分離を同時に動かしていたため、単独で動かした場合より遅くなっている。</p>
+<p>Bさんヒアリングの話者分離は、単独で動かしても約5.9時間（スリープ時間を除く。音声の5.6倍）かかった。CI（2.8倍）より大幅に遅く、音声が長いほど不利になる可能性がある。</p>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>今の構成のまま、夜間にまとめて処理する</td>
+<td>追加費用なし。音声を外に出さない</td>
+<td>翌日まで待つ。スリープ対策が必要</td>
+</tr>
+<tr>
+<td>B</td>
+<td>GPU のある PC・サーバーで処理する</td>
+<td>10倍以上速くなる見込み</td>
+<td>機材の用意が必要</td>
+</tr>
+<tr>
+<td>C</td>
+<td>クラウドの文字起こし（Azure Speech、OpenAI など。話者分離付き）</td>
+<td>速い。話者分離も付く</td>
+<td>音声を社外に送る。社内ルールの確認が必要。費用</td>
+</tr>
+<tr>
+<td>D</td>
+<td>Teams の文字起こしを使う（ISSUE-002）</td>
+<td>処理がほぼ不要。話者名付き</td>
+<td>Teams 会議でしか使えない</td>
+</tr>
+<tr>
+<td>E</td>
+<td>軽いモデルや設定にする（モデルを小さくする、話者分離を省く）</td>
+<td>速くなる</td>
+<td>精度が落ちる</td>
+</tr>
+</tbody>
+</table>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>議事録は会議後どれくらいで欲しいか（当日中 / 翌日でよい）。</li>
+<li>会議の音声を社外のクラウドサービスに送ってよいか（社内ルール）。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<p>処理の実行場所（ローカル / GPU サーバー / クラウド）が決まる。ソフト全体の構成に関わる。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：- 議事録は、できれば当日中に欲しいが、そこまで急ぎではない。
+- スピードアップの方法は、今後の課題として別途検討する → ISSUE-018。
+- <strong>音声はクラウドサービスに絶対に送らない。</strong>
+- 対応：音声・動画ファイルを外部に送る操作を拒否するフック <code>test_code/.claude/hooks/block-audio-upload.ps1</code> を作成し、<code>test_code/.claude/settings.json</code> とプロジェクトの <code>.claude/settings.json</code> に登録した（Claude Code の再起動後に有効）。案 C（クラウドの文字起こし）は不採用。</p></div></details><details id="issue-013" class="doc"><summary>ISSUE-013　画面共有された資料をどう議事録に入れるか（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 Bさんヒアリング</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-003、docs/verification/20261120_Bさんヒアリング_比較.md 要件 H3</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>ヒアリングではBさんが Excel などを画面共有して説明しており、R にはその位置に画像の差し込み枠が5か所ある。音声だけでは画面の内容が分からず、C は「この金額」「ここのデータ」のような指示語を説明できなかった。</p>
+<h2>根拠</h2>
+<ul>
+<li>R：「[取引先Pに提案している価格]」「[メーカー1のウルトラファインバブル]」「[マニュアル]」「[検収差異の状況]」「[納品請求報告書]」</li>
+<li>文字起こし：「ちょっと今これ見せながら説明すると」「このリモコンなんですけど」「ここの、帳表のここのデータです」</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>「見せながら」などの発言を検出し、その位置に差し込み枠だけ置く。画像は人が貼る</td>
+<td>実装が簡単。R と同じ形になる</td>
+<td>画像を貼る作業は残る</td>
+</tr>
+<tr>
+<td>B</td>
+<td>録画（映像）から画面のスクリーンショットを自動で切り出して貼る</td>
+<td>人の作業が減る</td>
+<td>録画が必要。録音しかない会議には使えない。処理が重い</td>
+</tr>
+<tr>
+<td>C</td>
+<td>共有された資料ファイルを別途もらい、内容を Claude に読ませる</td>
+<td>指示語の中身まで書ける</td>
+<td>資料をもらう手間。機密資料の扱い</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：まず A。</p>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>画面共有がある会議は、録画もしているか。</li>
+<li>R の差し込み枠には、実際に画像を貼っているか（今回の Word には画像が0枚だった）。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<p>A の場合、議事録作成プロンプトに「画面を見せながらの説明の位置に [資料名] の枠を置く」ルールを入れる。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：画像を入れる枠だけ入れる。何の画像か分かるように <code>[(画像内容名)]</code> の形にする。
+- 対応：Bさんヒアリングの議事録に6か所反映。</p></div></details><details id="issue-014" class="doc"><summary>ISSUE-014　Claude が印を付けずに誤った語に言い換えた（無断推定）（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>誤り</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 Bさんヒアリング</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>検証計画 3.3 ルール3・4.4 基準3、ISSUE-005、docs/verification/20261120_Bさんヒアリング_比較.md 3.2</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>崩れた文字起こしを、Claude が【推定】を付けずに、もっともらしい一般語に置き換えた。検証計画の合格基準「無断推定 0件」に違反する。読み手は誤りに気づけないので、議事録として最も害が大きい種類の誤り。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>文字起こし</th>
+<th>C の記載（印なし）</th>
+<th>正しい内容（R）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>研修オペレーション</td>
+<td>受発注オペレーションに近い</td>
+<td>検収オートメーションのスコープ</td>
+</tr>
+<tr>
+<td>受発中心レス化、ジャパンチューシブレス</td>
+<td>受発注レス化</td>
+<td>受発注シームレス化</td>
+</tr>
+<tr>
+<td>今日ヒアリングした内容をちょっと分解して構造とかいただいても</td>
+<td>今日のヒアリング内容を分解・構造化したものが欲しい</td>
+<td>受発注シームレス化を先に検討するため、Bさんの資料が欲しい</td>
+</tr>
+</tbody>
+</table>
+<p>CI では無断推定は「家電リスト」（文字起こしそのまま）の1件だったが、Bさんヒアリングでは Claude 自身の言い換えで3件起きた。文字起こしが崩れているほど、Claude が「意味の通る文」に寄せてしまう。</p>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>プロンプトで「文字起こしにない語を使ったら必ず【推定】」を徹底し、作成後に Claude 自身に文字起こしと照合させる（自己点検）</td>
+<td>すぐできる</td>
+<td>自己点検でも見落としは残る</td>
+</tr>
+<tr>
+<td>B</td>
+<td>議事録の各文に根拠のタイムスタンプを付けさせ、根拠の文と語が一致しない箇所を機械的に検出する</td>
+<td>漏れにくい</td>
+<td>出力が複雑になる。確認用の版でのみ使う</td>
+</tr>
+<tr>
+<td>C</td>
+<td>用語集（ISSUE-005）を整備し、そもそも推定が必要な箇所を減らす</td>
+<td>根本的</td>
+<td>用語集にない語では同じことが起きる</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：A＋C。B は確認用の版（ISSUE-007）と合わせて検討。</p>
+<h2>ソフトへの影響</h2>
+<p>議事録作成を「下書き → 文字起こしとの照合（自己点検）」の2段階にする。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 対応（Claude）：案 A＋C を実施。
+- 自己点検 <code>src/check_coverage.py</code> に「根拠のない語の点検」を入れた。議事録のカタカナ・英字の語のうち、文字起こしにも用語集にもないものを一覧にする（【推定】の印を付けた語は対象外）。
+- 2会議の議事録で、印のない言い換え5件（「正解」→会議、「会期」→会議、「ビルコン」→ビルトイン、「反抗」→ハンコ、文字起こしにない「スコープ」）を検出し、【推定】を付けるか、文字起こしどおりに直した。
+- 用語集（ISSUE-005）を整備し、推定が必要な箇所そのものを減らした。</p></div></details><details id="issue-015" class="doc"><summary>ISSUE-015　聞き取りにくい箇所・短い発言の拾い漏れ（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>誤り</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 Bさんヒアリング</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-004、ISSUE-005、ISSUE-006、docs/verification/20261120_Bさんヒアリング_比較.md 3.4</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>R にあって C にない項目が8件あった。ISSUE-004 の決定（AI は拾えるものをすべて拾う）に反している。ヒアリングでは R がほぼ全発言を拾っているので、抜けがそのまま差になる。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>R の項目</th>
+<th>抜けた理由（推定）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>取引先S の特値はあるか → 基本ない（I・B）</td>
+<td>文字起こしが崩れていて Claude が飛ばした</td>
+</tr>
+<tr>
+<td>受発注システム が価格改定のタイミングでバッチを回して通知すればよい（F）</td>
+<td>「手事故が…バッチリと」と崩れていた</td>
+</tr>
+<tr>
+<td>Oさんに、今後もやった方がよいと言われた（B）</td>
+<td>人名が「Oさん」と崩れていた</td>
+</tr>
+<tr>
+<td>これは営業企画Gの仕事だと思う（H）</td>
+<td>「国民って企画」と崩れていた</td>
+</tr>
+<tr>
+<td>Mさん等から採用購買の話が来る（B）</td>
+<td>「Mさんとか採用勾配で」と崩れていた</td>
+</tr>
+<tr>
+<td>納品日基準で価格が変わる商品があると困る（F）</td>
+<td>文字起こしは読める状態。Claude が要約で落とした</td>
+</tr>
+<tr>
+<td>PHP の時の強制検収の影響か（A）</td>
+<td>文字起こしは読める状態。Claude が要約で落とした</td>
+</tr>
+<tr>
+<td>違算処理の時は別途帳票を作るのか（A）</td>
+<td>文字起こしは読める状態。Claude が要約で落とした</td>
+</tr>
+</tbody>
+</table>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>崩れた箇所も飛ばさず【聞き取り不明】として残す（ルールの明確化）</td>
+<td>抜けが見える。人が音声で確認できる</td>
+<td>印が増える（ISSUE-007）</td>
+</tr>
+<tr>
+<td>B</td>
+<td>質問と回答は必ず対で残す、とプロンプトで指定する</td>
+<td>「読める質問を落とす」型の抜けを防げる</td>
+<td>分量が増える</td>
+</tr>
+<tr>
+<td>C</td>
+<td>作成後に、文字起こしの各発言が議事録のどこかに対応しているかを点検させる（ISSUE-014 の自己点検と同じ段）</td>
+<td>抜けを機械的に見つけられる</td>
+<td>処理が1段増える</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：A＋B＋C。</p>
+<h2>ソフトへの影響</h2>
+<p>自己点検の段（ISSUE-014）で、「付け足し」と「抜け」の両方を確認する。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：A・B・C はなるべくすべて実施する。情報の漏れが嫌。漏れのない議事録ができてから速度向上を検討する。今の目的は、正しい事実としての議事録を作ること。
+また、具体例や経緯は内容を理解するうえで大事なので、<strong>本文では省かない</strong>。決定事項・TODO では省いてもよい。質問を回答側の説明に盛り込むのはよいが、情報の抜けがないこと。
+- 対応：
+  - A・B：作成ルールに明記（docs/design/議事録作成ツール設計書.md 4.4）。
+  - C：自己点検スクリプト <code>src/check_coverage.py</code> を作成。文字起こしの各セグメントの内容語が議事録にあるかを照合し、抜けの候補を <code>minutes/&lt;名前&gt;/*_議事録.check.md</code> に出す。用語集の誤変換例で補正してから照合する。
+  - 2会議の議事録に適用し、抜け（冒頭の趣旨説明、「PV 蓄電池はMさんのもの」「結構タフそう」「一定の作業コスト」、会議終了後の会話など）を追記した。残った候補は、言い換えて記載済みか、崩れて意味が取れない断片であることを確認した。</p></div></details><details id="issue-016" class="doc"><summary>ISSUE-016　Bさんヒアリングの人手版（R）で確認したい箇所（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>不明点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>11/20 Bさんヒアリング</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-010、docs/verification/20261120_Bさんヒアリング_比較.md 4章</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>R と発言（文字起こし）が食い違い、R 側の誤記の可能性がある箇所。比較の正解を決めるため、どちらが正しいかを確認したい。</p>
+<h2>根拠</h2>
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>箇所</th>
+<th>R</th>
+<th>発言・文字起こし</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>日時</td>
+<td>2026/11/20(金) 16:30-17:00（CI と同じ）</td>
+<td>録音は約63分</td>
+</tr>
+<tr>
+<td>2</td>
+<td>題名</td>
+<td>取引先Pの在庫業務</td>
+<td>在庫の話は一部。「取引先Pの業務」か</td>
+</tr>
+<tr>
+<td>3</td>
+<td>MAX の商品名</td>
+<td>電気ガス暖</td>
+<td>「電気バス団」（浴室暖房乾燥機＝バス暖か）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>リモコンの金額</td>
+<td>通常13.557円、1件だけ13,578円</td>
+<td>「1万3557円」「1個だけ1円高い」→ 13,558円か</td>
+</tr>
+<tr>
+<td>5</td>
+<td>最後の回答の発言者</td>
+<td>「ガス機器は…発生していない。(A)」</td>
+<td>Bさんの回答</td>
+</tr>
+<tr>
+<td>6</td>
+<td>違算の帳票の質問者</td>
+<td>(B)</td>
+<td>Aさんの質問（41:04）</td>
+</tr>
+</tbody>
+</table>
+<h2>選択肢</h2>
+<p>（確認のみ）</p>
+<h2>ソフトへの影響</h2>
+<p>なし。検証の採点にのみ使う。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：
+1. 日時：R が誤っている。今回の検証では無視する。
+2. 題名：「取引先Pの在庫業務」ではない。「営業第二TのBさんのヒアリング」とする。
+3. MAX の商品名：不明だが、一旦「電気ガス暖」と記載する。
+4. 金額：通常は13.557円だが、データを見たら1件だけ13,578円だった、という意味（R のとおり）。
+5. 最後の回答：Bさんの回答（R の発言者表記の誤り）。
+6. 違算の帳票の質問者：Aさん（R の発言者表記の誤り）。
+- 対応：比較資料 4章に結論を追記、用語集の「電気ガス暖」を更新、自動版の Word の題名に反映した。</p></div></details><details id="issue-017" class="doc"><summary>ISSUE-017　議事録作成（Claude）をどこで動かすか（済）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>済</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>全般</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>docs/design/議事録作成ツール設計書.md 4.4、ISSUE-001、ISSUE-002</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>文字起こし・話者分離・Word 出力はスクリプト化したが、議事録の本文を作る工程（④）は Claude Code の対話の中で手作業的に行っている。ソフトにまとめるには、この工程の動かし方を決める必要がある。</p>
+<h2>根拠</h2>
+<ul>
+<li>現状、④の作成ルール・書式・用語集の使い方は、会話の中の指示と Issue に散らばっている。</li>
+<li>ヒアリングでは話者対応表を人が作る必要がある（ISSUE-001）。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>Claude Code のスキルだけで行う</td>
+<td>追加契約なし。人と対話しながら確認できる</td>
+<td>毎回 Claude Code を開いて頼む必要がある</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Claude API を使うプログラムにする</td>
+<td>ボタン1つで最後まで動く</td>
+<td>API キーと利用料が必要。話者対応表など人の判断を挟む画面を別に作る必要がある</td>
+</tr>
+<tr>
+<td>C</td>
+<td>ハイブリッド：重い処理（①②③⑤）はコード、④の作成ルールはスキルにまとめ、Claude Code で実行する。作成ルールはファイルに書き出し、後で API に移せる形にする</td>
+<td>今の運用のまま再現性が上がる。人の確認（話者対応表・用語の追加・Issue 起票）を対話で挟める。将来 B に移しやすい</td>
+<td>完全な自動化ではない</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：C。理由は2つ。(1) 話者対応表の作成や【要確認】の確認など、人の判断を挟む工程が残っており、対話で進められる方が手戻りが少ない。(2) スキルに書く作成ルールは、そのまま API 用のプロンプトにも使えるので、B に移る時に無駄にならない。</p>
+<p>※どの案でも、④では文字起こしのテキストを Anthropic に送る（音声は送らない）。</p>
+<h2>不明点（Aさんに確認したい）</h2>
+<ol>
+<li>議事録作成のたびに Claude Code を開いて頼む運用で問題ないか。</li>
+<li>Claude API の利用（API キー・費用）は社内で認められるか。</li>
+</ol>
+<h2>ソフトへの影響</h2>
+<p>④の実装方式と、人の確認画面の要否が決まる。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：議事録作成スキルを作ってレビューする。
+- 対応：案 C の形で <code>.claude/skills/minutes/</code>（SKILL.md＋references/writing-rules.md）を作成。補助スクリプト <code>src/speaker_samples.py</code>（話者対応表用）、<code>src/glossary_tool.py</code>（用語集の読み出し・追加候補）、<code>src/timing.py</code>（作業時間の記録）を追加。Cさん（一括受電）の録音で、このスキルに沿って作成して確かめる。Aさんのレビュー待ち。</p>
+<p>2026/11/23 Aさん：案 C（ハイブリッド）でよい。必要なところで Claude を使う方が分かりやすい。今後、議事録作成を Claude 以外で代替できないかも試していきたい → ISSUE-020。
+- 対応：議事録作成スキル <code>.claude/skills/minutes/</code> で運用開始。重い処理・機械的な処理は <code>src/</code> のスクリプト、文章を書く・判断する工程（④、⑤の判断、話者の推定）だけ Claude が行う。</p></div></details><details id="issue-018" class="doc"><summary>ISSUE-018　処理の高速化（未着手）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>未着手</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>全般</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-012（音声はクラウドに送らない）、docs/design/議事録作成ツール設計書.md 6章</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>CPU のみの環境では、63分の会議で文字起こし約1.7時間、話者分離約5.9時間かかった。当日中に議事録を出すには短縮が必要（急ぎではない）。音声をクラウドに送れないため、ローカルでの高速化に限られる。</p>
+<h2>根拠</h2>
+<ul>
+<li>docs/design/議事録作成ツール設計書.md 6章の処理時間</li>
+<li>話者分離が最も遅い（音声の5.6倍）</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>GPU のある PC で処理する</td>
+<td>10倍以上速くなる見込み</td>
+<td>機材の用意</td>
+</tr>
+<tr>
+<td>B</td>
+<td>話者分離の設定を軽くする（埋め込みのバッチ、区間の間引き、pyannote 4.x / community-1 への更新）</td>
+<td>機材不要</td>
+<td>精度が落ちる可能性</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Teams・Notion の文字起こし（話者付き）がある会議は、それを主入力にして音声処理を省略・縮小する（ISSUE-002）</td>
+<td>大幅に速い</td>
+<td>Teams・Notion がない会議には使えない</td>
+</tr>
+<tr>
+<td>D</td>
+<td>文字起こしと話者分離を夜間に自動実行する（スリープ防止付き）</td>
+<td>人の待ち時間がなくなる</td>
+<td>当日中には間に合わない場合がある</td>
+</tr>
+</tbody>
+</table>
+<h2>ソフトへの影響</h2>
+<p>処理の実行場所と、パイプラインの並列化の設計が変わる。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：今後の課題として別途検討する。</p></div></details><details id="issue-019" class="doc"><summary>ISSUE-019　ノイズの多い音声・テキストへの対応（保留）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>保留</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>全般</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-002、ISSUE-011、ISSUE-014、ISSUE-015、docs/design/議事録作成ツール設計書.md 5章</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>雑音・反響・小さい声・同時発話の多い音声や、崩れたテキスト（Teams・Notion の文字起こしを含む）に対して、どこまで対応しているかを整理する。今のところ専用のノイズ除去はしていない。問題が出た時に検討する観点として記録する。</p>
+<h2>根拠（現状の対応）</h2>
+<p><strong>音声のノイズ</strong></p>
+<table>
+<thead>
+<tr>
+<th>対応</th>
+<th>内容</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>していること</td>
+<td>Whisper 自体が雑音の多い音声で学習されており、ある程度は耐性がある</td>
+<td>①</td>
+</tr>
+<tr>
+<td>していること</td>
+<td>VAD（無音・非音声区間の検出）で、発話のない区間を文字起こしから外す</td>
+<td>①</td>
+</tr>
+<tr>
+<td>していること</td>
+<td>前の文脈を引き継がない設定で、雑音区間での同じ文の繰り返し（幻覚）を防ぐ</td>
+<td>①</td>
+</tr>
+<tr>
+<td>していること</td>
+<td>発話があるのに文字が極端に少ない区間を、VAD なしで文字起こしし直す</td>
+<td>③</td>
+</tr>
+<tr>
+<td>していないこと</td>
+<td>ノイズ除去（雑音を消す処理）、音量の均一化、反響の除去</td>
+<td>—</td>
+</tr>
+<tr>
+<td>していないこと</td>
+<td>Whisper が出す信頼度（avg_logprob、no_speech_prob）を使った、自信のない区間の検出</td>
+<td>—</td>
+</tr>
+<tr>
+<td>していないこと</td>
+<td>同時発話（2人が同時に話す）の分離。話者分離は時間の重なりが最も大きい1人に割り当てるだけ</td>
+<td>②</td>
+</tr>
+</tbody>
+</table>
+<p><strong>テキストのノイズ（誤変換・崩れた文）</strong></p>
+<table>
+<thead>
+<tr>
+<th>対応</th>
+<th>内容</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>していること</td>
+<td>用語集の誤変換例で正式表記に直す</td>
+<td>④⑤</td>
+</tr>
+<tr>
+<td>していること</td>
+<td>直せない箇所は【聞き取り不明】【推定】の印を付けて残す（推測で埋めない）</td>
+<td>④</td>
+</tr>
+<tr>
+<td>していること</td>
+<td>自己点検で、抜けと印のない言い換えの候補を出す</td>
+<td>⑤</td>
+</tr>
+<tr>
+<td>していないこと</td>
+<td>Teams・Notion のテキストの取り込み（ISSUE-002 で決定済み・未実装）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2>選択肢（問題が出た時の候補）</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>ローカルのノイズ除去を前処理に入れる（DeepFilterNet、RNNoise、noisereduce など）</td>
+<td>雑音の多い録音で精度が上がる可能性</td>
+<td>声まで削って逆に悪化することがある。処理時間が増える</td>
+</tr>
+<tr>
+<td>B</td>
+<td>音量の均一化（ラウドネス正規化）</td>
+<td>小さい声の取りこぼしが減る可能性</td>
+<td>効果は録音次第</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Whisper の信頼度が低い区間を自動で【聞き取り不明】候補にし、確認リストに出す</td>
+<td>人が聞き直す箇所を絞れる</td>
+<td>閾値の調整が必要</td>
+</tr>
+<tr>
+<td>D</td>
+<td>テキスト（Teams・Notion）と音声の両方がある場合、両方を突き合わせて良い方を採用する</td>
+<td>精度が大きく上がる可能性（ISSUE-002）</td>
+<td>実装量が多い</td>
+</tr>
+<tr>
+<td>E</td>
+<td>録音の仕方を改善する（マイクの位置、会議室の集音マイク）</td>
+<td>根本的</td>
+<td>運用の協力が必要</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：問題が出た録音で、まず C（低信頼度区間の可視化）を試し、効果がなければ A・B を比較する。D は ISSUE-002 の実装時に合わせて行う。</p>
+<h2>ソフトへの影響</h2>
+<p>①の前に前処理の段（A・B）、①の後に信頼度の確認リスト（C）が加わる可能性がある。</p>
+<h2>決定内容</h2>
+<p>2026/11/23 Aさん：今後、問題が出たら検討する観点とする（保留）。</p></div></details><details id="issue-020" class="doc"><summary>ISSUE-020　議事録作成（④）を Claude 以外で代替できるか（未着手）</summary><div class="doc-body"><table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>区分</td>
+<td>論点</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>未着手</td>
+</tr>
+<tr>
+<td>起票日</td>
+<td>2026/11/23</td>
+</tr>
+<tr>
+<td>対象会議</td>
+<td>全般</td>
+</tr>
+<tr>
+<td>関連</td>
+<td>ISSUE-017、ISSUE-012（音声はクラウドに送らない）、docs/design/議事録作成ツール設計書.md 5.5</td>
+</tr>
+</tbody>
+</table>
+<h2>何が起きているか・何が分からないか</h2>
+<p>議事録作成（④）は Claude が行っている。Aさんから、今後 Claude 以外で代替できないかも試したいという要望があった。</p>
+<h2>根拠</h2>
+<ul>
+<li>2026/11/23 Aさん（ISSUE-017 の回答）</li>
+<li>作成ルールはスキルの <code>references/writing-rules.md</code> と <code>format-spec.md</code> にファイルとしてまとめてあるので、他のモデルにも同じルールを渡せる。</li>
+<li>自己点検（⑤）はスクリプトなので、どのモデルの出力にも同じ基準で使える。</li>
+</ul>
+<h2>選択肢</h2>
+<table>
+<thead>
+<tr>
+<th>案</th>
+<th>内容</th>
+<th>良い点</th>
+<th>懸念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>ローカルで動く LLM（オープンモデル）で④を行う</td>
+<td>文字起こしのテキストも社外に出ない</td>
+<td>CPU のみでは非常に遅い。日本語の長文の質が不明</td>
+</tr>
+<tr>
+<td>B</td>
+<td>他社のクラウド LLM で④を行う</td>
+<td>比較ができる</td>
+<td>テキストを社外に送る点は Claude と同じ。社内ルールの確認が必要</td>
+</tr>
+<tr>
+<td>C</td>
+<td>比較の方法を先に決める：同じ文字起こし・同じ作成ルールで作り、⑤の自己点検と人手版との比較で評価する</td>
+<td>公平に比べられる</td>
+<td>評価の手間</td>
+</tr>
+</tbody>
+</table>
+<p>推奨：C の評価方法を決めてから、A・B を試す。</p>
+<h2>ソフトへの影響</h2>
+<p>④を差し替えられるよう、作成ルール・入力・出力（md の書式）をモデルに依存しない形で保つ。</p>
+<h2>決定内容</h2></div></details></section></main><script>
+document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.filters button').forEach(x=>x.classList.toggle('on',x===b));
+  const f=b.dataset.filter;document.querySelectorAll('table.issues tbody tr').forEach(r=>{r.style.display=!f||r.dataset.status===f?'':'none'});
+}));
+// ページ内リンクで閉じた details を開く
+function openTarget(){const id=location.hash.slice(1);if(!id)return;const el=document.getElementById(id);if(el&&el.tagName==='DETAILS'){el.open=true;el.scrollIntoView();}}
+window.addEventListener('hashchange',openTarget);openTarget();
+</script></body></html>

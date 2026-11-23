@@ -1,0 +1,38 @@
+# GitHub に公開しないもの
+
+# 用語集（社内の部署名・人名を含む。2026/11/23 Aさんの指示）
+docs/design/議事録作成用の用語集.xlsx
+
+# 会議の音声・動画（クラウドに送らない。docs/issue/issue_md/ISSUE-012）
+*.m4a
+*.mp3
+*.wav
+*.mp4
+*.aac
+*.flac
+*.ogg
+*.webm
+*.mov
+
+# Python の環境・キャッシュ（環境ごとに作り直す。設計書 2.4）
+.venv/
+.venv-diar/
+__pycache__/
+*.pyc
+
+# Office の一時ファイル
+~$*
+
+# 会議のデータ（音声・人手版・文字起こし・議事録・ログ）。2026/11/23 Aさんの指示
+input/
+output_MeetingMinutes/
+transcripts/
+logs/
+*.log
+
+# 公開用コピーの作業場所と、置き換え表（実名の一覧）。tools/export_public.py
+publish/
+private/
+
+# 個人の Claude Code 設定
+.claude/settings.local.json
