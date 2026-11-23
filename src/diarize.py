@@ -41,11 +41,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("audio", type=Path)
     parser.add_argument("--speakers", type=int, default=None, help="参加人数が分かっていれば指定")
+    parser.add_argument("--name", default=None, help="出力先の名前（既定は音声ファイル名。比較用に分けるときに使う）")
     parser.add_argument("--step", type=float, default=DEFAULT_STEP, help="窓をずらす幅（窓の長さ 10秒に対する割合）")
     parser.add_argument("--min-cluster-size", type=int, default=None, help="1話者あたりの最低特徴量数（省略時はずらし幅から自動）")
     args = parser.parse_args()
 
-    stem = transcript_stem(args.audio.stem)
+    stem = transcript_stem(args.name or args.audio.stem)
 
     started = time.time()
     # HF_TOKEN がなければ `hf auth login` で保存したトークンを使う

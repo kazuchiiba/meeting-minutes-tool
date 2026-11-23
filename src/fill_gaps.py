@@ -57,6 +57,28 @@ def speech_within(start: float, end: float, turns: list[dict]) -> tuple[float, f
     return max(start, min(t["start"] for t in inside)), min(end, max(t["end"] for t in inside))
 
 
+CHUNK_SEC = 25.0  # 補完で一度に Whisper に渡す長さの上限（これより長いと潰れやすい）
+
+
+def chunks(start: float, end: float, turns: list[dict]) -> list[tuple[float, float]]:
+    """区間内の発話区間を、CHUNK_SEC 以内の区切りにまとめる。発話区間がなければ区間を等分する。"""
+    inside = sorted((max(start, t["start"]), min(end, t["end"])) for t in turns if t["end"] > start and t["start"] < end)
+    pieces: list[list[float]] = []
+    for s, e in inside:
+        while e - s > CHUNK_SEC:  # 1つの発話区間が長すぎる場合は分割する
+            pieces.append([s, s + CHUNK_SEC])
+            s += CHUNK_SEC
+        if pieces and e - pieces[-1][0] <= CHUNK_SEC and s - pieces[-1][1] <= MERGE_GAP * 2:
+            pieces[-1][1] = max(pieces[-1][1], e)
+        else:
+            pieces.append([s, e])
+    if not pieces:
+        n = max(1, int((end - start) // CHUNK_SEC) + 1)
+        step = (end - start) / n
+        pieces = [[start + i * step, start + (i + 1) * step] for i in range(n)]
+    return [(s, e) for s, e in pieces if e - s > 0.3]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("audio", type=Path)
@@ -68,37 +90,48 @@ def main() -> None:
 
     stem = transcript_stem(args.name or args.audio.stem)
     segments = [s for s in json.loads(stem.with_suffix(".json").read_text(encoding="utf-8")) if not s.get("filled")]
-    turns = [] if args.no_diarize else json.loads(Path(f"{stem}.diarization.json").read_text(encoding="utf-8"))
+    audio = None
+    if args.no_diarize:
+        # 話者分離なしでは pyannote の発話区間がないので、Whisper 付属の Silero VAD で発話区間を求めて代わりに使う
+        # （これがないと「発話があるのに文字起こしがない区間」を検出できず、抜けが残る。子会社X定例会で2分の抜け）
+        from faster_whisper.vad import get_speech_timestamps
+
+        audio = load_audio(args.audio)
+        turns = [{"start": t["start"] / SAMPLE_RATE, "end": t["end"] / SAMPLE_RATE, "speaker": "VAD"}
+                 for t in get_speech_timestamps(audio)]
+    else:
+        turns = json.loads(Path(f"{stem}.diarization.json").read_text(encoding="utf-8"))
 
     sparse = [s for s in segments if is_sparse(s)]
     segments = [s for s in segments if not is_sparse(s)]
-    if args.no_diarize:
-        targets = [((seg["start"], seg["end"]), seg) for seg in sparse]
-    else:
-        targets = [(span, seg) for seg in sparse if (span := speech_within(seg["start"], seg["end"], turns))]
-        targets += [((s, e), None) for s, e in speech_spans(turns) if coverage(s, e, segments + sparse) < MAX_COVERAGE]
+    targets = [(span, seg) for seg in sparse if (span := speech_within(seg["start"], seg["end"], turns))]
+    targets += [((s, e), None) for s, e in speech_spans(turns) if coverage(s, e, segments + sparse) < MAX_COVERAGE]
     print(f"sparse segments: {len(sparse)}, targets: {len(targets)}")
 
     added = []
     if targets:
-        audio = load_audio(args.audio)
+        audio = audio if audio is not None else load_audio(args.audio)
         model = WhisperModel(SETTINGS["model"], device=SETTINGS["device"], compute_type=SETTINGS["compute_type"])
         for (s, e), original in targets:
-            offset = max(0.0, s - PAD)
-            clip = audio[int(offset * SAMPLE_RATE) : int((e + PAD) * SAMPLE_RATE)]
-            result, _ = model.transcribe(
-                clip,
-                language=SETTINGS["language"],
-                beam_size=SETTINGS["beam_size"],
-                vad_filter=args.no_diarize,  # 話者分離なしでは発話区間が分からないので VAD で無音を除く
-                condition_on_previous_text=False,
-                hotwords=args.hotwords,
-            )
-            new = [
-                {"start": offset + r.start, "end": offset + r.end, "text": r.text.strip(), "filled": True}
-                for r in result
-                if r.text.strip()
-            ]
+            new = []
+            # 長い区間を一度に渡すと Whisper がまた潰れる（子会社X定例会：125秒が22文字）。
+            # 発話区間を CHUNK_SEC 以内の小さな区切りにまとめ、1つずつ文字起こしする
+            for cs, ce in chunks(s, e, turns):
+                offset = max(0.0, cs - PAD)
+                clip = audio[int(offset * SAMPLE_RATE) : int((ce + PAD) * SAMPLE_RATE)]
+                result, _ = model.transcribe(
+                    clip,
+                    language=SETTINGS["language"],
+                    beam_size=SETTINGS["beam_size"],
+                    vad_filter=False,  # 区切りは発話区間なので VAD は不要（VAD で落ちるのを防ぐ）
+                    condition_on_previous_text=False,
+                    hotwords=args.hotwords,
+                )
+                new += [
+                    {"start": offset + r.start, "end": offset + r.end, "text": r.text.strip(), "filled": True}
+                    for r in result
+                    if r.text.strip()
+                ]
             print(f"[{fmt_ts(s)}-{fmt_ts(e)}] {'置換: ' + original['text'] if original else '追加'} -> {len(new)} segments")
             if original and not new:
                 new = [original]  # 再文字起こしで何も出なければ元に戻す
@@ -126,7 +159,7 @@ def main() -> None:
     meta["gap_fill"] = {
         "reason": "Whisper が長い区間を数文字に潰す・発話区間を出力しないことがある",
         "rule": (
-            f"話者分離なし：{SPARSE_MIN_SEC}秒以上で {SPARSE_MAX_CPS}字/秒未満のセグメントの区間全体を VAD ありで再文字起こし"
+            f"話者分離なし（発話区間は Silero VAD）：(1) {SPARSE_MIN_SEC}秒以上で {SPARSE_MAX_CPS}字/秒未満のセグメントを置換、(2) VAD の発話区間({MIN_SPAN}秒以上)で被覆率 {MAX_COVERAGE:.0%} 未満の区間を追加。VAD ありで再文字起こし"
             if args.no_diarize else
             f"(1) {SPARSE_MIN_SEC}秒以上で {SPARSE_MAX_CPS}字/秒未満のセグメントを置換、"
             f"(2) pyannote の発話区間({MIN_SPAN}秒以上)で Whisper の被覆率 {MAX_COVERAGE:.0%} 未満の区間を追加。"
