@@ -36,3 +36,6 @@ private/
 
 # 個人の Claude Code 設定
 .claude/settings.local.json
+
+# API キー（OpenAI など）。src/openai_review.py が読む
+.env

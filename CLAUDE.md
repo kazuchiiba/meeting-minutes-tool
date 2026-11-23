@@ -19,6 +19,12 @@
 - ログ（`*.log`）は `logs/` に出す。コマンドの出力をファイルに残すときは `logs/<内容>.log` にする（プロジェクト直下に置かない）。
 - **ファイルは削除しない。** 片付けは移動で行い、移動先に同じ名前があれば日時を付ける（`src/paths.py` の `move_into`）。
 
+## GitHub への push
+
+- リポジトリ：`kazuchiiba/meeting-minutes-tool`（private）。上げるのは公開用のコピー `publish/meeting-minutes-tool/` で、`tools/export_public.py` で作る。実名・社名は `private/公開用の置き換え表.tsv` で置き換える。
+- **コードや資料を変更したら、一連の作業が全部終わった時点で push を提案する**。変更内容の要約を添えて、承認を得てから push する。作業の途中や、承認なしには push しない。
+- 手順：`export_public.py` を実行して置き換え漏れ 0件を確かめる → `publish/meeting-minutes-tool/` で差分を見て、変更内容を commit メッセージに書く → push。
+
 ## その他
 
 - 開発の進め方は `.claude/skills/dev-cycle/`、議事録の作成は `.claude/skills/minutes/`、Issue の運用は `.claude/skills/issue/` を参照。

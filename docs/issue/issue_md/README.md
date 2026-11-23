@@ -57,4 +57,5 @@ Excel 版：[Issue一覧.xlsx](Issue一覧.xlsx)（ID 列から各 md を開け�
 | [ISSUE-024](ISSUE-024_話者分離の貢献度.md) | 話者分離（pyannote）は議事録の精度にどこまで貢献しているか | 論点 | 検討中 |
 | [ISSUE-025](ISSUE-025_Whisperへの用語の受け渡し.md) | Whisper に用語集を渡すか（文字起こしの段階で誤変換を減らす） | 論点 | 検討中 |
 | [ISSUE-026](ISSUE-026_話者分離なしでの抜けの補完.md) | 話者分離をしない会議で、抜けの補完が働かない・補完でまた潰れる | 誤り | 検討中 |
+| [ISSUE-027](ISSUE-027_レビューAgent.md) | 議事録のレビュー Agent（書き手と独立した点検）と Agent の設定 | 論点 | 検討中 |
 <!-- ISSUE-LIST:END -->

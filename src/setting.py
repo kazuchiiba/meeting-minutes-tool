@@ -19,6 +19,15 @@ DEFAULTS = {
     "diar_enabled": "しない",  # 話者分離：②（pyannote）を行うか（docs/issue/issue_md/ISSUE-024）
     "diar_shift_sec": 2.0,  # 話者分離：10秒の窓をずらす幅（秒）。精度をほぼ保ち約2倍速（ISSUE-018。pyannote 本来は 1.0）
     "diar_min_cluster_size": AUTO,  # 話者分離：1話者あたりの最低特徴量数
+    "review_agent": "使う",  # 議事録作成：議事録を書いた後、レビュー Agent（.claude/agents/minutes-reviewer.md）に点検させるか
+    "review_model": "sonnet",  # 議事録作成：レビュー Agent のモデル（「モデル一覧」シートの名前）
+}
+# setting.xlsx に「モデル一覧」シートがない場合の既定の一覧：名前 → (提供元, 呼び出し名, 使える)
+DEFAULT_MODELS = {
+    "sonnet": ("Claude", "sonnet", True),
+    "opus": ("Claude", "opus", True),
+    "haiku": ("Claude", "haiku", True),
+    "書き手と同じ": ("Claude", "", True),
 }
 WINDOW_SEC = 10.0  # pyannote/segmentation-3.0 の窓の長さ
 SHIFT_RANGE = (0.5, 5.0)
@@ -133,8 +142,57 @@ def whisper_hotwords(info_file: Path | None, values: dict | None = None) -> tupl
     return ("、".join(picked) or None), f"{source}の設定で渡す（{len(picked)}語・{length}文字）"
 
 
+def model_list(path: Path = SETTING) -> dict:
+    """「モデル一覧」シート：名前 → (提供元, 呼び出し名, 使える)。新しいモデルはシートに行を足せば選べる。"""
+    if not path.exists():
+        return dict(DEFAULT_MODELS)
+    wb = load_workbook(path, read_only=True, data_only=True)
+    if "モデル一覧" not in wb.sheetnames:
+        wb.close()
+        return dict(DEFAULT_MODELS)
+    models = {}
+    for row in wb["モデル一覧"].iter_rows(min_row=2, values_only=True):
+        if row and row[0]:
+            models[str(row[0]).strip()] = (str(row[1] or "").strip(), str(row[2] or "").strip(), str(row[3] or "").strip() == "使える")
+    wb.close()
+    return models
+
+
+def review_agent(values: dict | None = None) -> tuple[bool, str | None, str | None, str]:
+    """レビュー Agent の設定を返す：(使うか, 提供元 Claude/OpenAI, 呼び出し名, 説明)（docs/issue/issue_md/ISSUE-027）。
+
+    呼び出し名：Claude なら Agent ツールの model（空＝書き手と同じ）、OpenAI なら API のモデル名。
+    """
+    values = values or load()
+    use = str(values["review_agent"]).strip()
+    if use not in ("使う", "使わない"):
+        raise SystemExit(f"{SETTING.name}：「レビュー Agent を使う」は「使う」か「使わない」で指定してください（今の値 {use}）")
+    if use == "使わない":
+        return False, None, None, f"{SETTING.name}の設定で使わない"
+    name = str(values["review_model"]).strip()
+    models = model_list()
+    if name not in models:
+        raise SystemExit(f"{SETTING.name}：レビュー Agent のモデル「{name}」が「モデル一覧」シートにありません（{' / '.join(models)}）")
+    provider, call, usable = models[name]
+    if not usable:
+        raise SystemExit(f"{SETTING.name}：モデル「{name}」は「モデル一覧」シートで「使えない」になっています")
+    if provider == "OpenAI" and (not call or call.startswith("（")):
+        raise SystemExit(f"{SETTING.name}：モデル「{name}」（OpenAI）の呼び出し名に、OpenAI のモデル名を書いてください")
+    return True, provider, (call or None), f"{SETTING.name}の設定で使う（{name}：{provider} {call or '書き手と同じ'}）"
+
+
 if __name__ == "__main__":
-    print(load())
-    print(diarize_args())
-    print(diarize_enabled(None))
-    print(whisper_hotwords(None))
+    import sys
+
+    if sys.argv[1:] == ["review"]:  # 議事録作成スキルの手順5で使う
+        use, provider, call, reason = review_agent()
+        if not use:
+            print(f"review_agent=使わない（{reason}）")
+        else:
+            print(f"review_agent=使う provider={provider} model={call or '書き手と同じ'}（{reason}）")
+    else:
+        print(load())
+        print(diarize_args())
+        print(diarize_enabled(None))
+        print(whisper_hotwords(None))
+        print(review_agent())

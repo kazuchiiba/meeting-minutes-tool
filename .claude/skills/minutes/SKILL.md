@@ -91,6 +91,24 @@ description: 会議の録音（.m4a など）から、人手版と同じ書式�
   - 根拠のない語の候補：文字起こしにない語に言い換えていれば、【推定：「元の語」】を付けるか、文字起こしどおりに直す。
 - 直したら再実行し、本当の抜け・言い換えがなくなるまで繰り返す。
 
+### 5-2. レビュー Agent に点検させる（設定が「使う」のとき）
+
+```powershell
+.venv\Scripts\python src\setting.py review
+```
+
+- `review_agent=使う provider=OpenAI` なら、Agent ツールは使わず、次を実行する（同じ指示・同じ資料を OpenAI の API に送る。送るのはテキストだけで音声は送らない。API キーはプロジェクト直下の `.env`）。
+```powershell
+.venv\Scripts\python src\openai_review.py <名前>
+```
+- `review_agent=使う provider=Claude` なら、**Agent ツールで `minutes-reviewer` を呼ぶ**（`.claude/agents/minutes-reviewer.md`）。モデルは表示された `model`（`sonnet` など）を Agent ツールの `model` に指定する。「書き手と同じ」なら指定しない。
+- モデルの選択肢は `setting/setting.xlsx` の「モデル一覧」シート。新しいモデルは行を足せば選べる（docs/issue/issue_md/ISSUE-027）。
+  - `minutes-reviewer` が使えない環境（プロジェクトのフォルダ以外で Claude Code を起動した場合など）では、`general-purpose` の Agent に `.claude/agents/minutes-reviewer.md` を読ませて同じ役割をさせる。
+  - Agent への依頼文には、会議の名前とプロジェクトのフォルダだけを書く。**書き手の判断や自分の議事録への評価は書かない**（独立した目を保つため）。
+- 報告書 `output_MeetingMinutes/<名前>/evidence_log/<名前>_議事録.review.md` の指摘を1件ずつ文字起こしで確かめ、正しい指摘なら議事録を直す。直さない指摘は、理由を報告書の末尾に「書き手の判断」として追記する。
+- 直したら⑤の自己点検を再実行する。
+- `review_agent=使わない` なら、この手順は飛ばす。
+
 ### 6. ⑥ Word を出力する
 
 ```powershell
