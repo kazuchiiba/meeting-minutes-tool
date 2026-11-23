@@ -4,11 +4,14 @@
 実行中は Windows のスリープを抑止する（検証時、スリープで約7.5時間止まったため）。
 ②を行うかは、会議情報ファイルの「話者分離」欄 ＞ setting/setting.xlsx の順で決める（既定は「しない」。ISSUE-024）。
 ②の窓のずらし幅などは setting/setting.xlsx で変えられる（src/setting.py）。
+②を行わない場合、③の前に pyannote の区間検出だけ（detect_speech.py。約2分）を行い、③の発話区間に使う
+（setting.xlsx の gap_fill_vad。既定は pyannote。Silero VAD より抜けが少ない。ISSUE-026）。
+pyannote が使えない（.venv-diar がない・失敗した）場合は、Silero VAD で③を続ける。
 
 入力は3通り（docs/issue/issue_md/ISSUE-002）。音声とテキストは同じ名前（拡張子だけ違う）で input/ に置けば自動で組み合わせる。
-    音声のみ         ① 文字起こし → ② 話者分離 → ③ 抜けの補完（②を行わない設定なら ① → ③）
+    音声のみ         ① 文字起こし → ② 話者分離 → ③ 抜けの補完（②を行わない設定なら ① → 区間検出 → ③）
     テキストのみ     テキストの取り込み（Teams .vtt / .docx、Notion .txt / .md など）
-    テキスト＋音声   ① 文字起こし → ③ 抜けの補完 → テキストの取り込み → 話者の対応付け（話者名はテキストから。②は不要）
+    テキスト＋音声   ① 文字起こし → 区間検出 → ③ 抜けの補完 → テキストの取り込み → 話者の対応付け（話者名はテキストから。②は不要）
 
 使い方（プロジェクトルートで）:
     .venv/Scripts/python src/run_pipeline.py INPUT/<名前>.m4a --speakers <参加人数>
@@ -34,7 +37,7 @@ from datetime import datetime
 from pathlib import Path
 
 from paths import transcript_stem
-from setting import diarize_args, diarize_enabled, whisper_hotwords
+from setting import diarize_args, diarize_enabled, gap_fill_vad, whisper_hotwords
 
 ROOT = Path(__file__).resolve().parent.parent
 PY = ROOT / ".venv" / "Scripts" / "python.exe"
@@ -101,6 +104,23 @@ def fill_participants(info: Path, speakers: list[str]) -> None:
         print(f"会議情報ファイルの参加者欄に、テキストの話者名を入れました：{'、'.join(speakers)}")
 
 
+DETECT = "区間検出（pyannote）"
+
+
+def detect_steps(audio: Path, name: str, timing: dict) -> list[tuple[str, list[str]]]:
+    """話者分離なしの③抜けの補完と、その前の区間検出（setting.xlsx の gap_fill_vad が pyannote の場合）。ISSUE-026"""
+    fill = [str(PY), "src/fill_gaps.py", str(audio), "--name", name, "--no-diarize"]
+    vad = gap_fill_vad()
+    if vad == "pyannote" and not PY_DIAR.exists():
+        vad = "Silero（.venv-diar がないため）"
+    timing["gap_fill_vad"] = vad
+    print(f"③ 抜けの補完の発話区間：{vad}", flush=True)
+    if vad != "pyannote":
+        return [("③ 抜けの補完", fill + ["--vad", "silero"])]
+    Path(f"{transcript_stem(name)}.speech.json").unlink(missing_ok=True)  # 前の実行の結果を使わない
+    return [(DETECT, [str(PY_DIAR), "src/detect_speech.py", str(audio), "--name", name]), ("③ 抜けの補完", fill)]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path, help="音声ファイル、またはテキストファイル（Teams・Notion）")
@@ -148,7 +168,7 @@ def main() -> None:
         else:
             steps = [("① 文字起こし", [str(PY), "src/transcribe.py", str(audio), "--name", name])]
         steps += [
-            ("③ 抜けの補完", [str(PY), "src/fill_gaps.py", str(audio), "--name", name, "--no-diarize"]),
+            *detect_steps(audio, name, timing),
             ("テキストの取り込み", [str(PY), "src/import_text.py", "import", name, str(text)]),
             ("話者の対応付け", [str(PY), "src/import_text.py", "align", name]),
         ]
@@ -161,7 +181,7 @@ def main() -> None:
             steps = []
         else:
             steps = [("① 文字起こし", [str(PY), "src/transcribe.py", str(audio), "--name", name])]
-        steps.append(("③ 抜けの補完", [str(PY), "src/fill_gaps.py", str(audio), "--name", name, "--no-diarize"]))
+        steps += detect_steps(audio, name, timing)
     else:
         if name != audio.stem:
             sys.exit("音声のみの通常処理では --name は使えません（②話者分離の出力先が音声ファイル名で決まるため）")
@@ -198,6 +218,11 @@ def main() -> None:
             })
             Path(f"{stem}.timing.json").write_text(json.dumps(timing, ensure_ascii=False, indent=1), encoding="utf-8")
             print(f"[{datetime.now():%H:%M:%S}] {step_name} 終了（{elapsed / 60:.1f}分）", flush=True)
+            if result.returncode != 0 and step_name == DETECT:
+                print(f"{DETECT} が失敗したので、③は Silero VAD で発話区間を求めます", flush=True)
+                timing["gap_fill_vad"] += "（区間検出が失敗したため Silero）"
+                Path(f"{stem}.speech.json").unlink(missing_ok=True)
+                continue
             if result.returncode != 0:
                 sys.exit(f"{step_name} が失敗しました（終了コード {result.returncode}）")
     finally:

@@ -16,6 +16,7 @@ AUTO = "自動"
 DEFAULTS = {
     "whisper_glossary": "渡す",  # 文字起こし：Whisper に用語集を渡すか（docs/issue/issue_md/ISSUE-025）
     "whisper_glossary_max_chars": 120,  # 文字起こし：渡す語の上限（文字数）。Whisper の上限はおよそ100〜150字
+    "gap_fill_vad": "pyannote",  # 抜けの補完：話者分離なしのとき発話区間を何で求めるか（docs/issue/issue_md/ISSUE-026）
     "diar_enabled": "しない",  # 話者分離：②（pyannote）を行うか（docs/issue/issue_md/ISSUE-024）
     "diar_shift_sec": 2.0,  # 話者分離：10秒の窓をずらす幅（秒）。精度をほぼ保ち約2倍速（ISSUE-018。pyannote 本来は 1.0）
     "diar_min_cluster_size": AUTO,  # 話者分離：1話者あたりの最低特徴量数
@@ -86,6 +87,18 @@ def diarize_enabled(info_file: Path | None, values: dict | None = None) -> tuple
     if choice not in (DO, DONT):
         raise SystemExit(f"{source}：「話者分離」は「{DO}」か「{DONT}」で指定してください（今の値 {choice}）")
     return choice == DO, f"{source}の設定で{choice}"
+
+
+VAD_CHOICES = ("pyannote", "Silero")
+
+
+def gap_fill_vad(values: dict | None = None) -> str:
+    """話者分離なしの③抜けの補完で、発話区間を求める方法（pyannote / Silero）を返す（ISSUE-026）。"""
+    values = values or load()
+    choice = str(values["gap_fill_vad"]).strip()
+    if choice not in VAD_CHOICES:
+        raise SystemExit(f"{SETTING.name}：「抜けの補完の発話区間の検出」は {' / '.join(VAD_CHOICES)} で指定してください（今の値 {choice}）")
+    return choice
 
 
 GLOSSARY = ROOT / "docs" / "design" / "議事録作成用の用語集.xlsx"
@@ -194,5 +207,6 @@ if __name__ == "__main__":
         print(load())
         print(diarize_args())
         print(diarize_enabled(None))
+        print(gap_fill_vad())
         print(whisper_hotwords(None))
         print(review_agent())

@@ -86,12 +86,21 @@ def main() -> None:
     parser.add_argument("--no-diarize", action="store_true",
                         help="話者分離なし：疎なセグメントの区間全体を VAD ありで文字起こしし直す（無音からの幻覚を避ける）")
     parser.add_argument("--hotwords", default=None, help="Whisper に渡す語（docs/issue/issue_md/ISSUE-025）")
+    parser.add_argument("--vad", choices=["auto", "silero"], default="auto",
+                        help="話者分離なしの発話区間：auto＝detect_speech.py の結果があれば使い、なければ Silero VAD")
     args = parser.parse_args()
 
     stem = transcript_stem(args.name or args.audio.stem)
     segments = [s for s in json.loads(stem.with_suffix(".json").read_text(encoding="utf-8")) if not s.get("filled")]
     audio = None
-    if args.no_diarize:
+    speech_file = Path(f"{stem}.speech.json")
+    vad = None
+    if args.no_diarize and args.vad == "auto" and speech_file.exists():
+        # detect_speech.py（pyannote の区間検出だけ）の発話区間を使う。Silero VAD より抜けが少ない（ISSUE-026。
+        # 子会社X定例会で 6,781字 → 8,473字。話者分離ありの 8,442字とほぼ同じ）
+        turns = json.loads(speech_file.read_text(encoding="utf-8"))
+        vad = "pyannote の区間検出（detect_speech.py）"
+    elif args.no_diarize:
         # 話者分離なしでは pyannote の発話区間がないので、Whisper 付属の Silero VAD で発話区間を求めて代わりに使う
         # （これがないと「発話があるのに文字起こしがない区間」を検出できず、抜けが残る。子会社X定例会で2分の抜け）
         from faster_whisper.vad import get_speech_timestamps
@@ -99,6 +108,7 @@ def main() -> None:
         audio = load_audio(args.audio)
         turns = [{"start": t["start"] / SAMPLE_RATE, "end": t["end"] / SAMPLE_RATE, "speaker": "VAD"}
                  for t in get_speech_timestamps(audio)]
+        vad = "Silero VAD"
     else:
         turns = json.loads(Path(f"{stem}.diarization.json").read_text(encoding="utf-8"))
 
@@ -159,7 +169,7 @@ def main() -> None:
     meta["gap_fill"] = {
         "reason": "Whisper が長い区間を数文字に潰す・発話区間を出力しないことがある",
         "rule": (
-            f"話者分離なし（発話区間は Silero VAD）：(1) {SPARSE_MIN_SEC}秒以上で {SPARSE_MAX_CPS}字/秒未満のセグメントを置換、(2) VAD の発話区間({MIN_SPAN}秒以上)で被覆率 {MAX_COVERAGE:.0%} 未満の区間を追加。VAD ありで再文字起こし"
+            f"話者分離なし（発話区間は {vad}）：(1) {SPARSE_MIN_SEC}秒以上で {SPARSE_MAX_CPS}字/秒未満のセグメントを置換、(2) VAD の発話区間({MIN_SPAN}秒以上)で被覆率 {MAX_COVERAGE:.0%} 未満の区間を追加。VAD ありで再文字起こし"
             if args.no_diarize else
             f"(1) {SPARSE_MIN_SEC}秒以上で {SPARSE_MAX_CPS}字/秒未満のセグメントを置換、"
             f"(2) pyannote の発話区間({MIN_SPAN}秒以上)で Whisper の被覆率 {MAX_COVERAGE:.0%} 未満の区間を追加。"
